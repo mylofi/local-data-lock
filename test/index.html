@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Local Data Secure: Tests</title>
+<style>
+.toast-popup .swal2-html-container { white-space: nowrap; }
+.swal2-popup { font-size: max(0.6rem,min(3vw,1rem)); }
+.swal2-popup .swal2-html-container { font-size: unset !important; }
+.swal2-popup .modal-btn { display: inline-block; color: white; background-color: black; border: 0; border-radius: 0.25em; font-size: 1em !important; }
+ul { list-style-type: none; padding: 0; }
+ul li { margin: 0.7rem; }
+</style>
+</head>
+<body>
+
+<main>
+<h1>Local Data Secure: Tests</h1>
+
+<h3><a href="https://github.com/mylofi/local-data-secure">Github</a></h3>
+
+<hr>
+
+<p><strong>Note:</strong> these tests require a passkey-enabled device (TouchID, FaceID, etc); also, the data entered is saved (encrypted!) only in the local-storage on this device, which can be inspected via this browser's developer-tools.</p>
+
+<h2>Steps To Run Tests:</h2>
+<ol>
+	<li>Register a local account (providing a username and display-name for the first passkey on the account).</li>
+	<li>Register another local account (providing a different username and display name for the passkey on that second account).</li>
+	<li>Select one of the accounts from the drop-down list, and click the 'unlock account' button.</li>
+	<li>Type some text into the box, and click the 'save' button.</li>
+	<li>Click the 'lock account' button.</li>
+	<li>Click the 'detect (and unlock) account' button; you will be prompted to choose one of the passkeys for one of the registered local accounts.</li>
+	<li>Click 'add passkey' and provide yet another username and display-name for the additional passkey on the currently selected account.</li>
+	<li>Change the 'Passkey Keep-Alive' value to 1 minute, and click the 'set' button.</li>
+	<li>Wait at least 1 minute, then enter (or change) some text, and click 'save'; you will be prompted to re-authenticate a registered passkey.</li>
+	<li>While logged into both accounts, you will be able to switch between them (using the dropdown and the 'login to account' button), and update the text for each account and click 'save' button... all <strong>WITHOUT</strong> being re-prompted for any passkeys; once the 1 minute has expired, you'll be prompted for the passkey at the first interaction with each account.
+	<li>Click the 'reset account' button; you will be prompted to create a new passkey for the current account (previous passkeys will be discarded).</li>
+</ol>
+
+<p>When complete with testing:</p>
+
+<ol>
+	<li>Click the 'reset (remove all accounts)' button.</li>
+	<li>Use the device's system management settings to remove all the passkeys registered during testing.</li>
+</ol>
+
+<hr>
+
+<p>
+	<label>
+		Passkey Keep-Alive: <input type="text" id="passkey-keep-alive" value="30" size="2">min
+	</label>
+	<button type="button" id="set-passkey-keep-alive-btn">set</button>
+</p>
+<p>
+	<button type="button" id="register-account-btn">register local account</button>
+	<button type="button" id="detect-account-btn" disabled>detect (and unlock) account</button>
+	<button type="button" id="reset-all-accounts-btn" disabled>reset (remove all accounts)</button>
+</p>
+<p>
+	<select id="select-account" disabled>
+		<option value="">- select local account -</option>
+	</select>
+	<button type="button" id="unlock-account-btn" disabled>unlock account</button>
+</p>
+<p>
+	<button type="button" id="add-passkey-btn" disabled>add passkey</button>
+	<button type="button" id="reset-account-btn" disabled>reset account</button>
+	<button type="button" id="lock-account-btn" disabled>lock account</button>
+</p>
+<p>
+	<textarea id="account-data" placeholder="Enter text to encrypt and save in local account..." cols="55" rows="5" disabled></textarea>
+</p>
+<p>
+	<button type="button" id="save-data-btn" disabled>save</button>
+</p>
+
+</main>
+
+<!-------------------------->
+
+<script type="importmap">
+{
+	"imports": {
+		"local-data-secure/src": "./src/lds.js",
+		"local-data-secure/dist": "./dist/auto/lds.js",
+		"@lo-fi/webauthn-local-client": "./dist/auto/external/@lo-fi/webauthn-local-client/walc.js"
+	}
+}
+</script>
+<script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script type="module" src="./test.js"></script>
+
+</body>
+</html>

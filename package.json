@@ -1,0 +1,45 @@
+{
+	"name": "@lo-fi/local-data-secure",
+	"description": "Secure local-first app data with Webauthn (biometric passkeys) based encryption",
+	"version": "0.0.0",
+	"exports": {
+		".": "./dist/bundlers/lds.mjs",
+		"./bundlers/vite": "./bundler-plugins/vite.mjs",
+		"./bundlers/webpack": "./bundler-plugins/webpack.mjs"
+	},
+	"browser": {
+		"@lo-fi/local-data-secure": "./dist/bundlers/lds.mjs"
+	},
+	"scripts": {
+		"build:all": "node scripts/build-all.js",
+		"build:gh-pages": "npm run build:all && node scripts/build-gh-pages.js",
+		"build": "npm run build:all",
+		"test:start": "npx http-server test/ -p 8080",
+		"test": "npm run test:start",
+		"postinstall": "node scripts/postinstall.js",
+		"prepublishOnly": "npm run build:all"
+	},
+	"dependencies": {
+		"@lo-fi/webauthn-local-client": "latest"
+	},
+	"devDependencies": {
+		"micromatch": "~4.0.5",
+		"recursive-readdir-sync": "~1.0.6",
+		"terser": "~5.29.2"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mylofi/local-data-secure.git"
+	},
+	"keywords": [
+		"local-first",
+		"encryption"
+	],
+	"bugs": {
+		"url": "https://github.com/mylofi/local-data-secure/issues",
+		"email": "getify@gmail.com"
+	},
+	"homepage": "https://github.com/mylofi/local-data-secure",
+	"author": "Kyle Simpson <getify@gmail.com>",
+	"license": "MIT"
+}
