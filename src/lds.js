@@ -1,4 +1,5 @@
 import {
+	supportsWebAuthn,
 	regDefaults,
 	register,
 	authDefaults,
@@ -26,6 +27,16 @@ var abortToken = null;
 // ***********************
 
 export {
+	// re-export WebAuthn-Local-Client helper utilities:
+	supportsWebAuthn,
+	packPublicKeyJSON,
+	unpackPublicKeyJSON,
+	toBase64String,
+	fromBase64String,
+	toUTF8String,
+	fromUTF8String,
+
+	// main library API:
 	listLocalIdentities,
 	clearCryptoKeyCache,
 	removeLocalAccount,
@@ -36,6 +47,28 @@ export {
 	decryptData,
 	setMaxCryptoKeyCacheLifetime,
 };
+var publicAPI = {
+	// re-export WebAuthn-Local-Client helper utilities:
+	supportsWebAuthn,
+	packPublicKeyJSON,
+	unpackPublicKeyJSON,
+	toBase64String,
+	fromBase64String,
+	toUTF8String,
+	fromUTF8String,
+
+	// main library API:
+	listLocalIdentities,
+	clearCryptoKeyCache,
+	removeLocalAccount,
+	getCryptoKey,
+	generateEntropy,
+	deriveCryptoKey,
+	encryptData,
+	decryptData,
+	setMaxCryptoKeyCacheLifetime,
+};
+export default publicAPI;
 
 
 // ***********************
@@ -147,6 +180,7 @@ async function getCryptoKey(
 				resetAbortToken();
 
 				let authOptions = authDefaults({
+					relyingPartyID,
 					mediation: "optional",
 					allowCredentials: (
 						identityRecord.passkeys.map(({ credentialID, }) => ({
@@ -187,6 +221,7 @@ async function getCryptoKey(
 	else if (!addNewPasskey) {
 		resetAbortToken();
 		let authOptions = authDefaults({
+			relyingPartyID,
 			mediation: "optional",
 			signal: abortToken.signal,
 		});
@@ -391,8 +426,9 @@ function encryptData(
 		}
 		let encData = sodium.crypto_box_seal(dataBuffer,cryptoKey.encPK);
 		return (
-			outputFormat == "base64" ? toBase64String(encData) :
-			encData
+			[ "base64", "base-64", ].includes(outputFormat.toLowerCase()) ?
+				toBase64String(encData) :
+				encData
 		);
 	}
 	catch (err) {
@@ -418,7 +454,7 @@ function decryptData(
 			cryptoKey.encSK
 		);
 
-		if (outputFormat == "utf8")  {
+		if ([ "utf8", "utf-8", ].includes(outputFormat.toLowerCase()))  {
 			let decodedData = toUTF8String(dataBuffer);
 			return (
 				parseJSON ? JSON.parse(decodedData) : decodedData

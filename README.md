@@ -41,10 +41,10 @@ The [**@lo-fi/local-data-secure** npm package](https://npmjs.com/package/@lo-fi/
 
 ## `WebAuthn` Supported?
 
-To check if `WebAuthn` API and functionality is supported on the device, the **WebAuthn-Local-Client** dependency provides the `supportsWebAuthn` exported boolean:
+To check if `WebAuthn` API and functionality is supported on the device, consult the `supportsWebAuthn` exported boolean:
 
 ```js
-import { supportsWebAuthn } from "@lo-fi/webauthn-local-client";
+import { supportsWebAuthn } from "..";
 
 if (supportsWebAuthn) {
     // welcome to the future, without passwords!
@@ -62,7 +62,7 @@ A "local account" is merely a collection of one or more passkeys that are all ho
 To register a new local account:
 
 ```js
-import { getCryptoKey } from "...";
+import { getCryptoKey } from "..";
 
 var key = await getCryptoKey({ addNewPasskey: true, });
 ```
@@ -132,12 +132,38 @@ import { removeLocalAccount } from "..";
 removeLocalAccount(currentAccountID);
 ```
 
+### Configuring Passkeys
+
+There are several options available to the `getCryptoKey()` method, to customize the information used when registering passkeys:
+
+```js
+var key = await getCryptoKey({
+    addNewPasskey: true,  // or "localIdentity: .." + "resetCryptoKey: true"
+
+    /* passkey configuration options: */
+    username: "a-local-username",
+    displayName: "A Local Username",
+    relyingPartyID: "myappdomain.tld",
+    relyingPartyName: "My App",
+});
+```
+
+All of these passkey configuration options are string values, passed along to the `WebAuthn` API subsystem; they affect how the device saves the passkey once registered, and further verifies its usage later.
+
+The `username` (default: `"local-user"`) and `displayName` (default: `"Local User"`) options are information the system uses in its modal dialogs to indicate to the user which passkey they are using in authentication operations; this library only preserves them for non-functional, metadata/debugging purposes. Ideally, your application should prompt the user for these values before initial passkey registration, or auto-generate values that will make sense to the user.
+
+**Note:** The values don't strictly need to be unique, but if a user registers multiple passkeys with the same username/display-name, it may be confusing to them in future authentications.
+
+The `relyingPartyID` should be the canonical hostname of the web application, or matching an application's package ID (e.g., `com.app.my-favorite`) if it's an app-store installable application. Likewise, `relyingPartyName` (`My Favorite App`) should be a human-friendly name for your application that users will recognize; some devices will display this value in the passkey modal dialogs along with the `username` / `displayName` values.
+
+Three of the options (`username`, `displayName`, and `relyingPartName`) are *only* valid when creating a new passkey, in either `addNewPasskey: true` or `resetCryptoKey: true` modes; the `relyingPartyID` option can/should be used in all `getCryptoKey()` calls.
+
 ## Encrypt some data
 
 Once a keypair has been obtained, to encrypt application data:
 
 ```js
-import { encryptData } from "...";
+import { encryptData } from "..";
 
 var encData = encryptData(someData,key);
 ```
@@ -149,7 +175,11 @@ The `encryptData()` method will auto-detect the type of `someData`, so most any 
 The default representation in the return value (`encData`) will be a base64 encoded string (suitable for storing in LocalStorage, transmitting in JSON, etc). If you prefer the `Uint8Array` binary representation:
 
 ```js
-var encDataBuffer = encryptData(someData,{ outputFormat: "raw" });
+var encDataBuffer = encryptData(
+    someData,
+    key,
+    { outputFormat: "raw" }     // instead of "base64"
+);
 ```
 
 ## Decrypt some data
@@ -162,18 +192,26 @@ import { decryptData } from "..";
 var data = decryptData(encData,key);
 ```
 
-The `decryptData()` method will auto-detect the type of `encData` (either the base64 string encoding, or the `Uint8Array` encoding).
+The `decryptData()` method will auto-detect the type of `encData` (either the base64 string encoding, or the `Uint8Array` binary encoding).
 
-By default, the decrypted data is assumed to be a UTF8 JSON serialization string to be parsed. But if you are not encrypting/decrypting JSON-compatible data objects:
+By default, the decrypted data is assumed to be a utf-8 encoded string, with a JSON serialized value to be parsed. But if you are not encrypting/decrypting JSON-compatible data objects, set the `parseJSON: false` option:
 
 ```js
-var dataStr = decryptData(encData,key,{ parseJSON: false });
+var dataStr = decryptData(
+    encData,
+    key,
+    { parseJSON: false }
+);
 ```
 
-If you want the raw `Uint8Array` binary representation returned:
+If you want the raw `Uint8Array` binary representation returned, instead of the utf-8 string:
 
 ```js
-var dataBuffer = decryptData(encData,key,{ outputFormat: "raw" });
+var dataBuffer = decryptData(
+    encData,
+    key,
+    { outputFormat: "raw" }     // instead of "utf8" (or "utf-8")
+);
 ```
 
 ## Deriving an encryption/decryption key
@@ -186,9 +224,9 @@ import { deriveCryptoKey } from "..";
 var key = deriveCryptoKey(seedValue);
 ```
 
-This keypair is suitable to use with `encryptData()` and `decryptData()` methods. However, the keypair is NOT associated with (or protected by) a device passkey; it has no entry in the device's local-storage and will never be returned from `getCryptoKey()`. The intent of this library is to rely on passkeys, so you are encouraged *not* to pursue this manual approach unless strictly necessary.
+This keypair is suitable to use with `encryptData()` and `decryptData()` methods. However, the keypair returned WILL NOT be associated with (or protected by) a device passkey; it receives no entry in the device's local-storage and will never be returned from `getCryptoKey()`. The intent of this library is to rely on passkeys, so you are encouraged *not* to pursue this manual approach unless strictly necessary.
 
-To generate a suitable cryptograhpically random `seedValue`:
+Further, to generate a suitable cryptograhpically random `seedValue`:
 
 ```js
 import { generateEntropy } from "..";
@@ -198,7 +236,19 @@ var seedValue = generateEntropy(32);
 
 **Note:** The encryption/decryption keypairs this library uses (via underlying libsodium methods) require specifically 32 bytes (256 bits) of entropy for the seed value.
 
-Returned `seedValue` will be a raw `Uint8Array` binary typed-array.
+The returned `seedValue` will be a raw `Uint8Array` binary typed-array.
+
+## WebAuthn-Local-Client Utilities
+
+The following utilities are re-exported from the [`WebAuthn-Local-Client` dependency](https://github.com/mylofi/webauthn-local-client):
+
+* `toBase64String()` - from `Uint8Array` to string in base64 encoding
+* `fromBase64String()` - from base64 encoded string to `Uint8Array`
+* `toUTF8String()` - from `Uint8Array` to string in utf-8 string
+* `fromUTF8String()` - from utf-8 string to `Uint8Array`
+* `packPublicKeyJSON()` / `unpackPublicKeyJSON()` -- these are specifically for a passkey entry's `publicKey` property, when being stored/retrieved from `localStroage`
+
+These utilities are helpful when dealing with converting values between various representations, especially for storing values (i.e., `localStorage`, etc).
 
 ## Re-building `dist/*`
 
