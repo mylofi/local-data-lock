@@ -1,13 +1,13 @@
-# Local Data Secure
+# Local Data Lock
 
-[![npm Module](https://badge.fury.io/js/@lo-fi%2Flocal-data-secure.svg)](https://www.npmjs.org/package/@lo-fi/local-data-secure)
+[![npm Module](https://badge.fury.io/js/@lo-fi%2Flocal-data-lock.svg)](https://www.npmjs.org/package/@lo-fi/local-data-lock)
 [![License](https://img.shields.io/badge/license-MIT-a1356a)](LICENSE.txt)
 
-**Local Data Secure** provides a simple utility interface for encrypting and decrypting local-first application data using a keypair stored and protected by [Webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys).
+**Local Data Lock** provides a simple utility interface for encrypting and decrypting local-first application data using a keypair stored and protected by [Webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys).
 
 ----
 
-[Library Tests (Demo)](https://mylofi.github.io/local-data-secure/)
+[Library Tests (Demo)](https://mylofi.github.io/local-data-lock/)
 
 ----
 
@@ -15,23 +15,23 @@ The intent of this library is to store encrypted data on the device, and protect
 
 The primary dependency of this library is [**WebAuthn-Local-Client**](https://github.com/mylofi/webauthn-local-client), which wraps the [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) for managing passkeys entirely in the local client (zero servers).
 
-**Local-Data-Secure** generates an encryption/decryption keypair, storing that securely in the passkey (via its `userHandle` field), which is protected by a device's secure enclave/keychain/etc. The library also stores entries for these passkeys in the device's [`LocalStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
+**Local Data Lock** generates an encryption/decryption keypair, storing that securely in the passkey (via its `userHandle` field), which is protected by the authenticator/device. The library also stores entries for these passkeys in the device's [`LocalStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
 
-**NOTE:** This public-key for a passkey is *NOT* in any way related to the encryption/decryption keypair, which **Local-Data-Secure** does not persist anywhere on the device (only kept in memory). It's *only* used for authentication verification (protecting against MitM attacks on the device biometric system). Verification defaults to on, but can be skipped by passing `verify: false` as an option to the `getCryptoKey()` method.
+**NOTE:** This public-key for a passkey is *NOT* in any way related to the encryption/decryption keypair, which **Local Data Lock** does not persist anywhere on the device (only kept in memory). It's *only* used for authentication verification (protecting against MitM attacks on the device biometric system). Verification defaults to on, but can be skipped by passing `verify: false` as an option to the `getCryptoKey()` method.
 
 Your application accesses the encryption/decryption keypair via `getCryptoKey()`, and may optionally decide if you want to persist it somewhere -- for more convenience/ease-of-use, as compared to asking the user to re-authenticate their passkey on each usage. But you are cautioned to be very careful in such decisions, striking an appropriate balance between security and convenience.
 
-To assist in making these difficult tradeoffs, **Local-Data-Secure** internally caches the encryption/decryption key after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); a user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted from 0ms or higher, using the `setMaxCryptoKeyCacheLifetime()` method.
+To assist in making these difficult tradeoffs, **Local Data Lock** internally caches the encryption/decryption key after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); a user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted from 0ms or higher, using the `setMaxCryptoKeyCacheLifetime()` method.
 
 You are strongly encouraged **NOT** to persist the encryption/decryption key, and to utilize this time-based caching mechanism.
 
 ## Deployment / Import
 
 ```cmd
-npm install @lo-fi/local-data-secure
+npm install @lo-fi/local-data-lock
 ```
 
-The [**@lo-fi/local-data-secure** npm package](https://npmjs.com/package/@lo-fi/local-data-secure) includes a `dist/` directory with all files you need to deploy **Local Data Secure** (and its dependencies) into your application/project.
+The [**@lo-fi/local-data-lock** npm package](https://npmjs.com/package/@lo-fi/local-data-lock) includes a `dist/` directory with all files you need to deploy **Local Data Lock** (and its dependencies) into your application/project.
 
 **Note:** If you obtain this library via git instead of npm, you'll need to [build `dist/` manually](#re-building-dist) before deployment.
 
@@ -163,19 +163,19 @@ Three of the options (`username`, `displayName`, and `relyingPartName`) are *onl
 Once a keypair has been obtained, to encrypt application data:
 
 ```js
-import { encryptData } from "..";
+import { lockData } from "..";
 
-var encData = encryptData(someData,key);
+var encData = lockData(someData,key);
 ```
 
-The `encryptData()` method will auto-detect the type of `someData`, so most any value (even a JSON-compatible object) is suitable to pass in.
+The `lockData()` method will auto-detect the type of `someData`, so most any value (even a JSON-compatible object) is suitable to pass in.
 
 **Note:** If `someData` is already an array-buffer or typed-array, no transformation is necessary. If it's an object, a JSON string serialization is attempted. Otherwise, a string coercion is performed on the value. Regardless, the resulting string is then converted to a typed-array representation for encryption.
 
 The default representation in the return value (`encData`) will be a base64 encoded string (suitable for storing in LocalStorage, transmitting in JSON, etc). If you prefer the `Uint8Array` binary representation:
 
 ```js
-var encDataBuffer = encryptData(
+var encDataBuffer = lockData(
     someData,
     key,
     { outputFormat: "raw" }     // instead of "base64"
@@ -184,20 +184,20 @@ var encDataBuffer = encryptData(
 
 ## Decrypt some data
 
-With the keypair and a previously encrypted data value (from `encryptData()`), decryption can be performed:
+With the keypair and a previously encrypted data value (from `lockData()`), decryption can be performed:
 
 ```js
-import { decryptData } from "..";
+import { unlockData } from "..";
 
-var data = decryptData(encData,key);
+var data = unlockData(encData,key);
 ```
 
-The `decryptData()` method will auto-detect the type of `encData` (either the base64 string encoding, or the `Uint8Array` binary encoding).
+The `unlockData()` method will auto-detect the type of `encData` (either the base64 string encoding, or the `Uint8Array` binary encoding).
 
 By default, the decrypted data is assumed to be a utf-8 encoded string, with a JSON serialized value to be parsed. But if you are not encrypting/decrypting JSON-compatible data objects, set the `parseJSON: false` option:
 
 ```js
-var dataStr = decryptData(
+var dataStr = unlockData(
     encData,
     key,
     { parseJSON: false }
@@ -207,7 +207,7 @@ var dataStr = decryptData(
 If you want the raw `Uint8Array` binary representation returned, instead of the utf-8 string:
 
 ```js
-var dataBuffer = decryptData(
+var dataBuffer = unlockData(
     encData,
     key,
     { outputFormat: "raw" }     // instead of "utf8" (or "utf-8")
@@ -224,7 +224,7 @@ import { deriveCryptoKey } from "..";
 var key = deriveCryptoKey(seedValue);
 ```
 
-This keypair is suitable to use with `encryptData()` and `decryptData()` methods. However, the keypair returned WILL NOT be associated with (or protected by) a device passkey; it receives no entry in the device's local-storage and will never be returned from `getCryptoKey()`. The intent of this library is to rely on passkeys, so you are encouraged *not* to pursue this manual approach unless strictly necessary.
+This keypair is suitable to use with `lockData()` and `unlockData()` methods. However, the keypair returned WILL NOT be associated with (or protected by) a device passkey; it receives no entry in the device's local-storage and will never be returned from `getCryptoKey()`. The intent of this library is to rely on passkeys, so you are encouraged *not* to pursue this manual approach unless strictly necessary.
 
 Further, to generate a suitable cryptograhpically random `seedValue`:
 
@@ -265,7 +265,7 @@ npm run build:all
 
 Since the library involves non-automatable behaviors (requiring user intervention in browser), an automated unit-test suite is not included. Instead, a simple interactive browser test page is provided.
 
-Visit [`https://mylofi.github.io/local-data-secure/`](https://mylofi.github.io/local-data-secure/), and follow instructions in-page from there to perform the interactive tests.
+Visit [`https://mylofi.github.io/local-data-lock/`](https://mylofi.github.io/local-data-lock/), and follow instructions in-page from there to perform the interactive tests.
 
 ### Run Locally
 

@@ -43,8 +43,8 @@ export {
 	getCryptoKey,
 	generateEntropy,
 	deriveCryptoKey,
-	encryptData,
-	decryptData,
+	lockData,
+	unlockData,
 	setMaxCryptoKeyCacheLifetime,
 };
 var publicAPI = {
@@ -64,8 +64,8 @@ var publicAPI = {
 	getCryptoKey,
 	generateEntropy,
 	deriveCryptoKey,
-	encryptData,
-	decryptData,
+	lockData,
+	unlockData,
 	setMaxCryptoKeyCacheLifetime,
 };
 export default publicAPI;
@@ -122,7 +122,7 @@ async function getCryptoKey(
 		username = "local-user",
 		displayName = "Local User",
 		relyingPartyID = document.location.hostname,
-		relyingPartyName = "Local-Data-Secure",
+		relyingPartyName = "Local Data Lock",
 
 		addNewPasskey = false,
 		resetCryptoKey = false,
@@ -390,7 +390,7 @@ function deriveCryptoKey(iv = generateEntropy(IV_BYTE_LENGTH)) {
 	}
 }
 
-function encryptData(
+function lockData(
 	data,
 	cryptoKey,
 	/*options=*/{
@@ -436,7 +436,7 @@ function encryptData(
 	}
 }
 
-function decryptData(
+function unlockData(
 	encData,
 	cryptoKey,
 	/*options=*/{

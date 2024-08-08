@@ -1,14 +1,14 @@
 {
-	"name": "@lo-fi/local-data-secure",
-	"description": "Secure local-first app data with Webauthn (biometric passkeys) based encryption",
+	"name": "@lo-fi/local-data-lock",
+	"description": "Protect local-first app data with encryption/decryption key secured in Webauthn (biometric) passkeys",
 	"version": "0.0.0",
 	"exports": {
-		".": "./dist/bundlers/lds.mjs",
+		".": "./dist/bundlers/ldl.mjs",
 		"./bundlers/vite": "./bundler-plugins/vite.mjs",
 		"./bundlers/webpack": "./bundler-plugins/webpack.mjs"
 	},
 	"browser": {
-		"@lo-fi/local-data-secure": "./dist/bundlers/lds.mjs"
+		"@lo-fi/local-data-lock": "./dist/bundlers/ldl.mjs"
 	},
 	"scripts": {
 		"build:all": "node scripts/build-all.js",
@@ -29,17 +29,17 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/mylofi/local-data-secure.git"
+		"url": "git+https://github.com/mylofi/local-data-lock.git"
 	},
 	"keywords": [
 		"local-first",
 		"encryption"
 	],
 	"bugs": {
-		"url": "https://github.com/mylofi/local-data-secure/issues",
+		"url": "https://github.com/mylofi/local-data-lock/issues",
 		"email": "getify@gmail.com"
 	},
-	"homepage": "https://github.com/mylofi/local-data-secure",
+	"homepage": "https://github.com/mylofi/local-data-lock",
 	"author": "Kyle Simpson <getify@gmail.com>",
 	"license": "MIT"
 }

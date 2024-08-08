@@ -1,4 +1,4 @@
-# Deploying Local-Data-Secure WITH A Bundler
+# Deploying Local-Data-Lock WITH A Bundler
 
 This project has non-ESM dependencies, which unfortunately cannot be *bundled* in with your other app code. Modern bundlers unfortunately don't out-of-the-box support configurations that can handle such a situation.
 
@@ -8,13 +8,13 @@ As such, this project provides plugins for Vite and Webpack, to take care of the
 
 The plugins for Vite and Webpack are included in the `bundler-plugins/` directory. They should handle all necessary steps to load the dependencies.
 
-**Note:** You should not need to manually copy any files out of the `dist/bundlers/` directory, as the plugins access the `local-data-secure` dependency (in `node_modules`) directly to pull the files needed. But for reference, the files these plugins access are:
+**Note:** You should not need to manually copy any files out of the `dist/bundlers/` directory, as the plugins access the `local-data-lock` dependency (in `node_modules`) directly to pull the files needed. But for reference, the files these plugins access are:
 
-* `dist/bundlers/lds.mjs`
+* `dist/bundlers/ldl.mjs`
 
     ESM library module that's suitable for bundling and `import`ing into your web app.
 
-    **Note:** this is *not* the same as `dist/auto/lds.js`, which is only intended [for web application projects WITHOUT a bundler](NON-BUNDLERS.md)
+    **Note:** this is *not* the same as `dist/auto/ldl.js`, which is only intended [for web application projects WITHOUT a bundler](NON-BUNDLERS.md)
 
 * `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc.mjs`
 
@@ -28,7 +28,7 @@ If using Vite 5+, it's strongly suggested to import this library's Vite-plugin t
 
 ```js
 import { defineConfig } from "vite";
-import LDS from "@lo-fi/local-data-secure/bundlers/vite";
+import LDL from "@lo-fi/local-data-lock/bundlers/vite";
 
 export default defineConfig({
     // ..
@@ -45,7 +45,7 @@ export default defineConfig({
         target: "es2022"
     },
 
-    plugins: [ LDS() ],
+    plugins: [ LDL() ],
 
     // ..
 });
@@ -53,7 +53,7 @@ export default defineConfig({
 
 This plugin works for the `vite dev` (dev-server), `vite preview` (also dev-server), and `vite build` modes. In all cases, it copies the `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the `public/` directory of your project root. It also injects a `<script src="/walc-external-bundle.js"></script>` tag into the markup of the `index.html` file that Vite produces for your app.
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDS()` above with no arguments). If something about its behavior is not compatible with your Vite project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-secure/bundler-plugins/vite.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Vite project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/vite.mjs` plugin and make necessary changes.
 
 #### Top-level `await`
 
@@ -90,20 +90,20 @@ Then import this library's Webpack-plugin to manage the loading of its non-ESM d
 
 ```js
 // 'HtmlWebpackPlugin' is a required dependency of the
-// local-data-secure Webpack plugin
+// local-data-lock Webpack plugin
 import HtmlWebpackPlugin from "html-webpack-plugin";
-import LDS from "@lo-fi/local-data-secure/bundlers/webpack";
+import LDL from "@lo-fi/local-data-lock/bundlers/webpack";
 
 export default {
     // ..
 
     plugins: [
-        // required LDS dependency
+        // required LDL dependency
         new HtmlWebpackPlugin({
             // ..
         }),
 
-        LDS()
+        LDL()
     ],
 
     // ..
@@ -112,14 +112,14 @@ export default {
 
 This plugin copies the `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the build root (default `dist/`), along with the other bundled files. It also injects a `<script src="walc-external-bundle.js"></script>` tag into the markup of the `index.html` file (and any other HTML files) that Webpack produces for your app.
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `WALC()` above with no arguments). If something about its behavior is not compatible with your Webpack project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-secure/bundler-plugins/webpack.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `WALC()` above with no arguments). If something about its behavior is not compatible with your Webpack project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/webpack.mjs` plugin and make necessary changes.
 
 ## Import/Usage
 
-To import and use **local-data-secure** in a *bundled* browser app:
+To import and use **local-data-lock** in a *bundled* browser app:
 
 ```js
-import { getCryptoKey, encryptData, decryptData } from "@lo-fi/local-data-secure";
+import { getCryptoKey, encryptData, decryptData } from "@lo-fi/local-data-lock";
 ```
 
-When `import`ed like this, both Vite and Webpack should (via these plugins) properly find and bundle the `dist/bundlers/lds.mjs` ESM library module with the rest of your app code, hopefully without any further steps necessary.
+When `import`ed like this, both Vite and Webpack should (via these plugins) properly find and bundle the `dist/bundlers/ldl.mjs` ESM library module with the rest of your app code, hopefully without any further steps necessary.

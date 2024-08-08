@@ -1,4 +1,4 @@
-/*! Local-Data-Secure: #FILENAME#
+/*! Local-Data-Lock: #FILENAME#
     v#VERSION# (c) #YEAR# Kyle Simpson
     MIT License: http://getify.mit-license.org
 */

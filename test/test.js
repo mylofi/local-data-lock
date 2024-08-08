@@ -3,14 +3,14 @@ import {
 	clearCryptoKeyCache,
 	removeLocalAccount,
 	getCryptoKey,
-	encryptData,
-	decryptData,
+	lockData,
+	unlockData,
 	setMaxCryptoKeyCacheLifetime,
 }
 // note: this module specifier comes from the import-map
 //    in index.html; swap "src" for "dist" here to test
 //    against the dist/* files
-from "local-data-secure/src";
+from "local-data-lock/src";
 
 
 // ***********************
@@ -392,7 +392,7 @@ function unlockAccountData(accountID,key) {
 	var data = loadAccountData(accountID);
 	if (typeof data == "string") {
 		if (data != "") {
-			let text = decryptData(data,key,{ parseJSON: false, });
+			let text = unlockData(data,key,{ parseJSON: false, });
 			accountDataEl.value = text;
 		}
 		else {
@@ -405,7 +405,7 @@ function unlockAccountData(accountID,key) {
 }
 
 function lockAccountData(accountID,key,data) {
-	storeAccountData(accountID,encryptData(data,key));
+	storeAccountData(accountID,lockData(data,key));
 }
 
 function loadAccountData(accountID) {

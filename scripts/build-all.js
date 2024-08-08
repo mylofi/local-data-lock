@@ -13,7 +13,7 @@ var terser = require("terser");
 const PKG_ROOT_DIR = path.join(__dirname,"..");
 const SRC_DIR = path.join(PKG_ROOT_DIR,"src");
 const MAIN_COPYRIGHT_HEADER = path.join(SRC_DIR,"copyright-header.txt");
-const LDS_SRC = path.join(SRC_DIR,"lds.js");
+const LDL_SRC = path.join(SRC_DIR,"ldl.js");
 const NODE_MODULES_DIR = path.join(PKG_ROOT_DIR,"node_modules");
 const LOFI_WALC_DIST_DIR = path.join(NODE_MODULES_DIR,"@lo-fi","webauthn-local-client","dist");
 const LOFI_WALC_DIST_AUTO_DIR = path.join(LOFI_WALC_DIST_DIR,"auto");
@@ -71,9 +71,9 @@ async function main() {
 		/*skipPatterns=*/[ "**/*.txt", "**/*.json", "**/external" ]
 	);
 
-	// build src/lds.js to bundlers/lds.mjs
+	// build src/ldl.js to bundlers/ldl.mjs
 	await buildFiles(
-		[ LDS_SRC, ],
+		[ LDL_SRC, ],
 		SRC_DIR,
 		DIST_BUNDLERS_DIR,
 		(contents,outputPath,filename = path.basename(outputPath)) => prepareFileContents(
