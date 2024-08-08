@@ -1,11 +1,11 @@
 import {
 	listLocalIdentities,
-	clearCryptoKeyCache,
+	clearLockKeyCache,
 	removeLocalAccount,
-	getCryptoKey,
+	getLockKey,
 	lockData,
 	unlockData,
-	setMaxCryptoKeyCacheLifetime,
+	setMaxLockKeyCacheLifetime,
 }
 // note: this module specifier comes from the import-map
 //    in index.html; swap "src" for "dist" here to test
@@ -125,7 +125,7 @@ async function setKeepAlive() {
 	var keepAlive = Math.max(1,Number(passkeyKeepAliveEl.value != null ? passkeyKeepAliveEl.value : 30));
 	passkeyKeepAliveEl.value = keepAlive;
 
-	setMaxCryptoKeyCacheLifetime(keepAlive * 60 * 1000);
+	setMaxLockKeyCacheLifetime(keepAlive * 60 * 1000);
 	showToast(`Passkey Keep-Alive set to ${keepAlive} minute(s)`);
 }
 
@@ -212,7 +212,7 @@ async function registerAccount() {
 
 	if (username != null && displayName != null) {
 		try {
-			let key = await getCryptoKey({
+			let key = await getLockKey({
 				addNewPasskey: true,
 				username,
 				displayName,
@@ -236,7 +236,7 @@ async function registerAccount() {
 
 async function detectAccount() {
 	try {
-		let key = await getCryptoKey();
+		let key = await getLockKey();
 		if (!localAccountIDs.includes(key.localIdentity)) {
 			throw new Error("No account matching selected passkey");
 		}
@@ -280,7 +280,7 @@ async function resetAllAccounts() {
 async function unlockAccount() {
 	if (selectAccountEl.selectedIndex > 0) {
 		try {
-			let key = await getCryptoKey({ localIdentity: selectAccountEl.value, });
+			let key = await getLockKey({ localIdentity: selectAccountEl.value, });
 			if (!localAccountIDs.includes(key.localIdentity)) {
 				throw new Error("No account found for selected passkey");
 			}
@@ -302,7 +302,7 @@ async function addPasskey() {
 
 	if (username != null && displayName != null) {
 		try {
-			await getCryptoKey({
+			await getLockKey({
 				localIdentity: currentAccountID,
 				addNewPasskey: true,
 				username,
@@ -336,9 +336,9 @@ async function resetAccount() {
 
 		if (username != null && displayName != null) {
 			try {
-				let key = await getCryptoKey({
+				let key = await getLockKey({
 					localIdentity: currentAccountID,
-					resetCryptoKey: true,
+					resetLockKey: true,
 					username,
 					displayName,
 				});
@@ -351,7 +351,7 @@ async function resetAccount() {
 				else {
 					storeAccountData(currentAccountID,"");
 				}
-				showToast("Account cryptographic key reset (and previous passkeys discarded).");
+				showToast("Account lock-key reset (and previous passkeys discarded).");
 			}
 			catch (err) {
 				logError(err);
@@ -362,7 +362,7 @@ async function resetAccount() {
 }
 
 async function lockAccount() {
-	clearCryptoKeyCache(currentAccountID);
+	clearLockKeyCache(currentAccountID);
 	currentAccountID = null;
 	selectAccountEl.selectedIndex = 0;
 	changeSelectedAccount();
@@ -372,7 +372,7 @@ async function lockAccount() {
 
 async function saveData() {
 	try {
-		let key = await getCryptoKey({ localIdentity: currentAccountID, });
+		let key = await getLockKey({ localIdentity: currentAccountID, });
 		if (accountDataEl.value != "") {
 			lockAccountData(currentAccountID,key,accountDataEl.value);
 		}

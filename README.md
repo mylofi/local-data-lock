@@ -17,11 +17,11 @@ The primary dependency of this library is [**WebAuthn-Local-Client**](https://gi
 
 **Local Data Lock** generates an encryption/decryption keypair, storing that securely in the passkey (via its `userHandle` field), which is protected by the authenticator/device. The library also stores entries for these passkeys in the device's [`LocalStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
 
-**NOTE:** This public-key for a passkey is *NOT* in any way related to the encryption/decryption keypair, which **Local Data Lock** does not persist anywhere on the device (only kept in memory). It's *only* used for authentication verification (protecting against MitM attacks on the device biometric system). Verification defaults to on, but can be skipped by passing `verify: false` as an option to the `getCryptoKey()` method.
+**NOTE:** This public-key for a passkey is *NOT* in any way related to the encryption/decryption keypair, which **Local Data Lock** does not persist anywhere on the device (only kept in memory). It's *only* used for authentication verification (protecting against MitM attacks on the device biometric system). Verification defaults to on, but can be skipped by passing `verify: false` as an option to the `getLockKey()` method.
 
-Your application accesses the encryption/decryption keypair via `getCryptoKey()`, and may optionally decide if you want to persist it somewhere -- for more convenience/ease-of-use, as compared to asking the user to re-authenticate their passkey on each usage. But you are cautioned to be very careful in such decisions, striking an appropriate balance between security and convenience.
+Your application accesses the encryption/decryption keypair via `getLockKey()`, and may optionally decide if you want to persist it somewhere -- for more convenience/ease-of-use, as compared to asking the user to re-authenticate their passkey on each usage. But you are cautioned to be very careful in such decisions, striking an appropriate balance between security and convenience.
 
-To assist in making these difficult tradeoffs, **Local Data Lock** internally caches the encryption/decryption key after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); a user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted from 0ms or higher, using the `setMaxCryptoKeyCacheLifetime()` method.
+To assist in making these difficult tradeoffs, **Local Data Lock** internally caches the encryption/decryption key after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); a user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted from 0ms or higher, using the `setMaxLockKeyCacheLifetime()` method.
 
 You are strongly encouraged **NOT** to persist the encryption/decryption key, and to utilize this time-based caching mechanism.
 
@@ -62,9 +62,9 @@ A "local account" is merely a collection of one or more passkeys that are all ho
 To register a new local account:
 
 ```js
-import { getCryptoKey } from "..";
+import { getLockKey } from "..";
 
-var key = await getCryptoKey({ addNewPasskey: true, });
+var key = await getLockKey({ addNewPasskey: true, });
 ```
 
 The returned keypair result will also include a `localIdentity` property, with a unique ID (`string` value) for the local account. This local account ID should be stored by your application (in local-storage, cookie, etc):
@@ -75,15 +75,15 @@ var currentAccountID = key.localIdentity;
 
 ### Obtaining the keypair from existing account/passkey
 
-If the `currentAccountID` (as shown above) is available, it should be used in subsequent calls to `getCryptoKey()` when re-obtaining the encryption/decryption keypair from the existing passkey:
+If the `currentAccountID` (as shown above) is available, it should be used in subsequent calls to `getLockKey()` when re-obtaining the encryption/decryption keypair from the existing passkey:
 
 ```js
-var key = await getCryptoKey({ localIdentitity: currentAccountID, });
+var key = await getLockKey({ localIdentitity: currentAccountID, });
 ```
 
 If you don't have (or the application loses) an account ID, call `listLocalIdentities()` to receive an array of all registed local account IDs.
 
-Alternatively, `getCryptoKey()` can be called WITHOUT either `localIdentity` or `addNewPasskey` options, in which case the device will prompt the user to select a discoverable passkey (if supported). If the user chooses a passkey that matches one of the registered local accounts, the keypair (and its `localIdentity` account ID property) will be returned.
+Alternatively, `getLockKey()` can be called WITHOUT either `localIdentity` or `addNewPasskey` options, in which case the device will prompt the user to select a discoverable passkey (if supported). If the user chooses a passkey that matches one of the registered local accounts, the keypair (and its `localIdentity` account ID property) will be returned.
 
 ### Adding alternate passkeys to an account
 
@@ -92,7 +92,7 @@ Users may prefer a more robust security setup (less chance of identity/data loss
 To prompt for adding a new passkey to an existing local account:
 
 ```js
-/*var key =*/ await getCryptoKey({ localIdentitity: currentAccountID, addNewPasskey: true, });
+/*var key =*/ await getLockKey({ localIdentitity: currentAccountID, addNewPasskey: true, });
 ```
 
 ### Change passkey cache lifetime
@@ -100,10 +100,10 @@ To prompt for adding a new passkey to an existing local account:
 To change the default (30 minutes) lifetime for caching passkey authentication (encryption/decryption keypair):
 
 ```js
-import { setMaxCryptoKeyCacheLifetime } from "..";
+import { setMaxLockKeyCacheLifetime } from "..";
 
 // change default lifetime to 5 minutes
-setMaxCryptoKeyCacheLifetime(5 * 60 * 1000);
+setMaxLockKeyCacheLifetime(5 * 60 * 1000);
 ```
 
 ### Clear the passkey/keypair cache
@@ -111,15 +111,15 @@ setMaxCryptoKeyCacheLifetime(5 * 60 * 1000);
 To clear a cache entry (effectively, "logging out"):
 
 ```js
-import { clearCryptoKeyCache } from "..";
+import { clearLockKeyCache } from "..";
 
-clearCryptoKeyCache(currentAccountID);
+clearLockKeyCache(currentAccountID);
 ```
 
 To clear *all* cache entries, omit the local account ID:
 
 ```js
-clearCryptoKeyCache();
+clearLockKeyCache();
 ```
 
 ### Removing a local account
@@ -134,11 +134,11 @@ removeLocalAccount(currentAccountID);
 
 ### Configuring Passkeys
 
-There are several options available to the `getCryptoKey()` method, to customize the information used when registering passkeys:
+There are several options available to the `getLockKey()` method, to customize the information used when registering passkeys:
 
 ```js
-var key = await getCryptoKey({
-    addNewPasskey: true,  // or "localIdentity: .." + "resetCryptoKey: true"
+var key = await getLockKey({
+    addNewPasskey: true,  // or "localIdentity: .." + "resetLockKey: true"
 
     /* passkey configuration options: */
     username: "a-local-username",
@@ -156,7 +156,7 @@ The `username` (default: `"local-user"`) and `displayName` (default: `"Local Use
 
 The `relyingPartyID` should be the canonical hostname of the web application, or matching an application's package ID (e.g., `com.app.my-favorite`) if it's an app-store installable application. Likewise, `relyingPartyName` (`My Favorite App`) should be a human-friendly name for your application that users will recognize; some devices will display this value in the passkey modal dialogs along with the `username` / `displayName` values.
 
-Three of the options (`username`, `displayName`, and `relyingPartName`) are *only* valid when creating a new passkey, in either `addNewPasskey: true` or `resetCryptoKey: true` modes; the `relyingPartyID` option can/should be used in all `getCryptoKey()` calls.
+Three of the options (`username`, `displayName`, and `relyingPartName`) are *only* valid when creating a new passkey, in either `addNewPasskey: true` or `resetLockKey: true` modes; the `relyingPartyID` option can/should be used in all `getLockKey()` calls.
 
 ## Encrypt some data
 
@@ -219,12 +219,12 @@ var dataBuffer = unlockData(
 If you want to manually derive the keypair information from a secure random seed value (`Uint8Array` with enough random entropy):
 
 ```js
-import { deriveCryptoKey } from "..";
+import { deriveLockKey } from "..";
 
-var key = deriveCryptoKey(seedValue);
+var key = deriveLockKey(seedValue);
 ```
 
-This keypair is suitable to use with `lockData()` and `unlockData()` methods. However, the keypair returned WILL NOT be associated with (or protected by) a device passkey; it receives no entry in the device's local-storage and will never be returned from `getCryptoKey()`. The intent of this library is to rely on passkeys, so you are encouraged *not* to pursue this manual approach unless strictly necessary.
+This keypair is suitable to use with `lockData()` and `unlockData()` methods. However, the keypair returned WILL NOT be associated with (or protected by) a device passkey; it receives no entry in the device's local-storage and will never be returned from `getLockKey()`. The intent of this library is to rely on passkeys, so you are encouraged *not* to pursue this manual approach unless strictly necessary.
 
 Further, to generate a suitable cryptograhpically random `seedValue`:
 

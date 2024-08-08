@@ -18,9 +18,9 @@ import {
 // ***********************
 
 const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES;
-var MAX_CRYPTO_KEY_CACHE_LIFETIME = setMaxCryptoKeyCacheLifetime();
+var MAX_LOCK_KEY_CACHE_LIFETIME = setMaxLockKeyCacheLifetime();
 var localIdentities = loadLocalIdentities();
-var cryptoKeyCache = {};
+var lockKeyCache = {};
 var abortToken = null;
 
 
@@ -38,14 +38,14 @@ export {
 
 	// main library API:
 	listLocalIdentities,
-	clearCryptoKeyCache,
+	clearLockKeyCache,
 	removeLocalAccount,
-	getCryptoKey,
+	getLockKey,
 	generateEntropy,
-	deriveCryptoKey,
+	deriveLockKey,
 	lockData,
 	unlockData,
-	setMaxCryptoKeyCacheLifetime,
+	setMaxLockKeyCacheLifetime,
 };
 var publicAPI = {
 	// re-export WebAuthn-Local-Client helper utilities:
@@ -59,14 +59,14 @@ var publicAPI = {
 
 	// main library API:
 	listLocalIdentities,
-	clearCryptoKeyCache,
+	clearLockKeyCache,
 	removeLocalAccount,
-	getCryptoKey,
+	getLockKey,
 	generateEntropy,
-	deriveCryptoKey,
+	deriveLockKey,
 	lockData,
 	unlockData,
-	setMaxCryptoKeyCacheLifetime,
+	setMaxLockKeyCacheLifetime,
 };
 export default publicAPI;
 
@@ -77,46 +77,46 @@ function listLocalIdentities() {
 	return Object.keys(localIdentities);
 }
 
-function getCachedCryptoKey(localID) {
+function getCachedLockKey(localID) {
 	if (
-		// cryptographic key currently in cache?
-		(localID in cryptoKeyCache) &&
+		// lock-key currently in cache?
+		(localID in lockKeyCache) &&
 
 		// ... and not expired yet?
-		cryptoKeyCache[localID].timestamp >= (
-			Date.now() - MAX_CRYPTO_KEY_CACHE_LIFETIME
+		lockKeyCache[localID].timestamp >= (
+			Date.now() - MAX_LOCK_KEY_CACHE_LIFETIME
 		)
 	) {
-		let { timestamp, ...cryptoKey } = cryptoKeyCache[localID];
-		return cryptoKey;
+		let { timestamp, ...lockKey } = lockKeyCache[localID];
+		return lockKey;
 	}
 }
 
-function cacheCryptoKey(localID,cryptoKey,forceUpdate = false) {
-	if (!(localID in cryptoKeyCache) || forceUpdate) {
-		cryptoKeyCache[localID] = {
-			...cryptoKey,
+function cacheLockKey(localID,lockKey,forceUpdate = false) {
+	if (!(localID in lockKeyCache) || forceUpdate) {
+		lockKeyCache[localID] = {
+			...lockKey,
 			timestamp: Date.now(),
 		};
 	}
 }
 
-function clearCryptoKeyCache(localID) {
+function clearLockKeyCache(localID) {
 	if (localID != null) {
-		delete cryptoKeyCache[localID]
+		delete lockKeyCache[localID]
 	}
 	else {
-		cryptoKeyCache = {};
+		lockKeyCache = {};
 	}
 }
 
 function removeLocalAccount(localID) {
-	delete cryptoKeyCache[localID];
+	delete lockKeyCache[localID];
 	delete localIdentities[localID];
 	storeLocalIdentities();
 }
 
-async function getCryptoKey(
+async function getLockKey(
 	{
 		localIdentity: localID = toBase64String(generateEntropy(15)),
 		username = "local-user",
@@ -125,20 +125,20 @@ async function getCryptoKey(
 		relyingPartyName = "Local Data Lock",
 
 		addNewPasskey = false,
-		resetCryptoKey = false,
+		resetLockKey = false,
 		verify = true,
 	} = {},
 ) {
 	// local-identity already registered?
 	var identityRecord = localIdentities[localID];
 	if (identityRecord != null) {
-		// cryptographic key already in cache?
-		let cryptoKey = getCachedCryptoKey(localID);
-		if (cryptoKey != null && !resetCryptoKey) {
+		// lock-key already in cache?
+		let lockKey = getCachedLockKey(localID);
+		if (lockKey != null && !resetLockKey) {
 			if (addNewPasskey) {
 				resetAbortToken();
 
-				let { record, } = await registerLocalIdentity(cryptoKey);
+				let { record, } = await registerLocalIdentity(lockKey);
 				identityRecord.lastSeq = record.lastSeq;
 				identityRecord.passkeys = [
 					...identityRecord.passkeys,
@@ -147,18 +147,18 @@ async function getCryptoKey(
 				storeLocalIdentities();
 			}
 
-			// return cached cryptographic key info
+			// return cached lock-key info
 			return {
-				...cryptoKey,
+				...lockKey,
 				localIdentity: localID,
 			};
 		}
 		else {
 			// remove expired cache entry (if any)
-			delete cryptoKeyCache[localID];
+			delete lockKeyCache[localID];
 
-			// create new cryptographic key (and passkey)?
-			if (resetCryptoKey) {
+			// create new lock-key (and passkey)?
+			if (resetLockKey) {
 				resetAbortToken();
 
 				// throw away previous identity record (including
@@ -166,16 +166,16 @@ async function getCryptoKey(
 				// identity record and passkey
 				({
 					record: localIdentities[localID],
-					cryptoKey,
+					lockKey,
 				} = await registerLocalIdentity());
 				storeLocalIdentities();
 
 				return {
-					...cryptoKey,
+					...lockKey,
 					localIdentity: localID,
 				};
 			}
-			// auth with existing passkey (and cache resulting crypto key)?
+			// auth with existing passkey (and cache resulting lock-key)?
 			else if (!addNewPasskey) {
 				resetAbortToken();
 
@@ -207,7 +207,7 @@ async function getCryptoKey(
 				}
 
 				return {
-					...extractCryptoKey(authResult),
+					...extractLockKey(authResult),
 					localIdentity: localID,
 				};
 			}
@@ -217,7 +217,7 @@ async function getCryptoKey(
 		}
 	}
 	// attempt auth (with existing discoverable passkey) to extract
-	// (and cache!) existing crypto key?
+	// (and cache!) existing lock-key?
 	else if (!addNewPasskey) {
 		resetAbortToken();
 		let authOptions = authDefaults({
@@ -226,7 +226,7 @@ async function getCryptoKey(
 			signal: abortToken.signal,
 		});
 		let authResult = await auth(authOptions);
-		let cryptoKey = extractCryptoKey(authResult);
+		let lockKey = extractLockKey(authResult);
 
 		// find matching local-identity (if any)
 		let [ matchingLocalID, ] = (
@@ -240,7 +240,7 @@ async function getCryptoKey(
 		) || [];
 		// discard auto-generated local-id, use matching local-id?
 		if (matchingLocalID != null) {
-			delete cryptoKeyCache[localID];
+			delete lockKeyCache[localID];
 			localID = matchingLocalID;
 			identityRecord = localIdentities[localID];
 
@@ -258,26 +258,26 @@ async function getCryptoKey(
 				}
 			}
 
-			cacheCryptoKey(localID,cryptoKey);
+			cacheLockKey(localID,lockKey);
 		}
 		else if (verify) {
 			throw new Error("Auth verification requested but skipped, against unrecognized passkey (no matching local-identity)");
 		}
 
 		return {
-			...cryptoKey,
+			...lockKey,
 			localIdentity: localID,
 		};
 	}
 	// new local-identity needs initial registration
 	else {
 		resetAbortToken();
-		let { record, cryptoKey, } = await registerLocalIdentity();
+		let { record, lockKey, } = await registerLocalIdentity();
 		localIdentities[localID] = record;
-		cacheCryptoKey(localID,cryptoKey);
+		cacheLockKey(localID,lockKey);
 		storeLocalIdentities();
 		return {
-			...cryptoKey,
+			...lockKey,
 			localIdentity: localID,
 		};
 	}
@@ -285,7 +285,7 @@ async function getCryptoKey(
 
 	// ***********************
 
-	async function registerLocalIdentity(cryptoKey = deriveCryptoKey()) {
+	async function registerLocalIdentity(lockKey = deriveLockKey()) {
 		try {
 			let identityRecord = localIdentities[localID];
 			let lastSeq = ((identityRecord || {}).lastSeq || 0) + 1;
@@ -295,12 +295,12 @@ async function getCryptoKey(
 			// to encode (big-endian) a passkey sequence value; this
 			// additional value allows multiple passkeys (up to 65,535 of
 			// them) registered on the same authenticator, sharing the same
-			// cryptographic keypair IV in its userHandle
-			let userHandle = new Uint8Array(cryptoKey.iv.byteLength + 2);
+			// lock-keypair IV in its userHandle
+			let userHandle = new Uint8Array(lockKey.iv.byteLength + 2);
 			let seqBytes = new DataView(new ArrayBuffer(2));
 			seqBytes.setInt16(0,lastSeq,/*littleEndian=*/false);
-			userHandle.set(cryptoKey.iv,0);
-			userHandle.set(new Uint8Array(seqBytes.buffer),cryptoKey.iv.byteLength);
+			userHandle.set(lockKey.iv,0);
+			userHandle.set(new Uint8Array(seqBytes.buffer),lockKey.iv.byteLength);
 
 			let regOptions = regDefaults({
 				relyingPartyID,
@@ -325,7 +325,7 @@ async function getCryptoKey(
 						}),
 					],
 				},
-				cryptoKey,
+				lockKey,
 			};
 		}
 		catch (err) {
@@ -334,7 +334,7 @@ async function getCryptoKey(
 		}
 	}
 
-	function extractCryptoKey(authResult) {
+	function extractLockKey(authResult) {
 		try {
 			if (
 				authResult &&
@@ -342,11 +342,11 @@ async function getCryptoKey(
 				isByteArray(authResult.response.userID) &&
 				authResult.response.userID.byteLength == (IV_BYTE_LENGTH + 2)
 			) {
-				let cryptoKey = deriveCryptoKey(
+				let lockKey = deriveLockKey(
 					authResult.response.userID.subarray(0,IV_BYTE_LENGTH)
 				);
-				cacheCryptoKey(localID,cryptoKey);
-				return cryptoKey;
+				cacheLockKey(localID,lockKey);
+				return lockKey;
 			}
 			else {
 				throw new Error("Passkey info missing");
@@ -370,7 +370,7 @@ function generateEntropy(numBytes = 16) {
 	return sodium.randombytes_buf(numBytes);
 }
 
-function deriveCryptoKey(iv = generateEntropy(IV_BYTE_LENGTH)) {
+function deriveLockKey(iv = generateEntropy(IV_BYTE_LENGTH)) {
 	try {
 		let ed25519KeyPair = sodium.crypto_sign_seed_keypair(iv);
 		return {
@@ -392,7 +392,7 @@ function deriveCryptoKey(iv = generateEntropy(IV_BYTE_LENGTH)) {
 
 function lockData(
 	data,
-	cryptoKey,
+	lockKey,
 	/*options=*/{
 		outputFormat = "base64",		// "base64", "raw"
 	} = {}
@@ -424,7 +424,7 @@ function lockData(
 		if (data == null) {
 			throw new Error("Non-empty data required.");
 		}
-		let encData = sodium.crypto_box_seal(dataBuffer,cryptoKey.encPK);
+		let encData = sodium.crypto_box_seal(dataBuffer,lockKey.encPK);
 		return (
 			[ "base64", "base-64", ].includes(outputFormat.toLowerCase()) ?
 				toBase64String(encData) :
@@ -438,7 +438,7 @@ function lockData(
 
 function unlockData(
 	encData,
-	cryptoKey,
+	lockKey,
 	/*options=*/{
 		outputFormat = "utf8",		// "utf8", "raw"
 		parseJSON = true,
@@ -450,8 +450,8 @@ function unlockData(
 				typeof encData == "string" ? fromBase64String(encData) :
 				encData
 			),
-			cryptoKey.encPK,
-			cryptoKey.encSK
+			lockKey.encPK,
+			lockKey.encSK
 		);
 
 		if ([ "utf8", "utf-8", ].includes(outputFormat.toLowerCase()))  {
@@ -536,10 +536,10 @@ function storeLocalIdentities() {
 	}
 }
 
-function setMaxCryptoKeyCacheLifetime(
+function setMaxLockKeyCacheLifetime(
 	ms = 30 * 60 * 1000			// 30 min (default)
 ) {
-	return (MAX_CRYPTO_KEY_CACHE_LIFETIME = Math.max(0,Number(ms) || 0));
+	return (MAX_LOCK_KEY_CACHE_LIFETIME = Math.max(0,Number(ms) || 0));
 }
 
 function isByteArray(val) {

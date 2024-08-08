@@ -119,7 +119,7 @@ This plugin copies the `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/
 To import and use **local-data-lock** in a *bundled* browser app:
 
 ```js
-import { getCryptoKey, encryptData, decryptData } from "@lo-fi/local-data-lock";
+import { getLockKey, lockData, unlockData } from "@lo-fi/local-data-lock";
 ```
 
 When `import`ed like this, both Vite and Webpack should (via these plugins) properly find and bundle the `dist/bundlers/ldl.mjs` ESM library module with the rest of your app code, hopefully without any further steps necessary.

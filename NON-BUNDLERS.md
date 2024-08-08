@@ -21,7 +21,7 @@ Then copy over all `dist/auto/*` contents, as-is:
 To import and use **local-data-lock** in a *non-bundled* browser app:
 
 ```js
-import { getCryptoKey, encryptData, decryptData } from "/path/to/js-assets/local-data-lock/ldl.js";
+import { getLockKey, lockData, unlockData } from "/path/to/js-assets/local-data-lock/ldl.js";
 ```
 
 The library's dependencies will be auto-loaded (via `external.js`).
@@ -45,7 +45,7 @@ If your **non-bundled** browser app has an [Import Map](https://developer.mozill
 Now, you'll be able to `import` the library in your app in a friendly/readable way:
 
 ```js
-import { getCryptoKey, encryptData, decryptData } from "local-data-lock";
+import { getLockKey, lockData, unlockData } from "local-data-lock";
 ```
 
 **Note:** If you omit the above `"local-data-lock"` import-map entry, you can still `import` **local-data-lock** by specifying the proper path to `ldl.js`. However, the entry above for `"@lo-fi/webauthn-local-client"` is more required. Alternatively, you'll have to manually edit the `ldl.js` file to change its `import` specifier from `"@lo-fi/webauthn-local-client"` to the proper path to `walc.js`.
