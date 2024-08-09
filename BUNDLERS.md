@@ -22,7 +22,7 @@ The plugins for Astro, Vite, and Webpack are included in the `bundler-plugins/` 
 
     Non-ESM (plain global .js) bundle of dependencies that must be loaded separately from (and prior to) your app's bundle.
 
-### Astro Plugin
+### Astro Plugin (aka Integration)
 
 If using Astro 4+, it's strongly suggested to import this library's Astro-plugin to manage the loading of its non-ESM dependencies. Add something like the following to your `astro.config.mjs` file:
 
@@ -61,7 +61,7 @@ export default defineConfig({
 
 This plugin works for the `astro dev` (dev-server), as well as `astro build` / `astro preview` modes. In all cases, it copies the WebAuthn-Local-Client (`@lo-fi/webauthn-local-client`) dependency bundle file (`/dist/bundlers/walc-external-bundle.js`) into the `public/` directory of your project root, as well as the `dist/` directory when running a build. It also injects an inline `<script>` element into the `<head>` of all generated pages, which dynamically loads the `/walc-external-bundle.js` script file (which has all the dependencies WALC needs).
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `WALC()` above with no arguments). If something about its behavior is not compatible with your Astro project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/astro.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Astro project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/astro.mjs` plugin and make necessary changes.
 
 ### Vite Plugin
 
@@ -119,7 +119,7 @@ export default defineConfig({
 
 #### SSR Breakage
 
-An unfortunate gotcha of tools that wrap Vite (e.g., Astro, Nuxt, etc) and do SSR (server-side rendering) is that they *break* a key assumption/behavior of this module's Vite plugin: the HTML injection of `<script src="/walc-external-bundle.js"></script>`.
+An unfortunate gotcha of some tools that wrap Vite (e.g., Nuxt, etc) and do SSR (server-side rendering) is that they *break* a key assumption/behavior of this module's Vite plugin: the HTML injection of `<script src="/walc-external-bundle.js"></script>`.
 
 As such, you'll likely need to manually add that `<script>` tag to your HTML pages/templates. The Vite plugin still copies that file into the `public/` folder for you, so it should load once the tag is added to your HTML.
 
@@ -153,7 +153,7 @@ export default {
 
 This plugin copies the `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the build root (default `dist/`), along with the other bundled files. It also injects a `<script src="walc-external-bundle.js"></script>` tag into the markup of the `index.html` file (and any other HTML files) that Webpack produces for your app.
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `WALC()` above with no arguments). If something about its behavior is not compatible with your Webpack project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/webpack.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Webpack project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/webpack.mjs` plugin and make necessary changes.
 
 ## Import/Usage
 
