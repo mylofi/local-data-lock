@@ -15,10 +15,10 @@ export default LDL;
 function LDL() {
 	var ldlSrcPath;
 
-	var depPlugin = WALC();
+	var walcVite = WALC();
 
 	return {
-		...depPlugin,
+		...walcVite,
 
 		name: "vite-plugin-ldl",
 
@@ -26,14 +26,14 @@ function LDL() {
 			var bundlersDir = path.join(cfg.root,"node_modules","@lo-fi","local-data-lock","dist","bundlers");
 			ldlSrcPath = path.join(bundlersDir,"ldl.mjs");
 
-			return depPlugin.configResolved(cfg);
+			return walcVite.configResolved(cfg);
 		},
 
 		load(id,opts) {
 			if (id == "@lo-fi/local-data-lock") {
 				return fs.readFileSync(ldlSrcPath,{ encoding: "utf8", });
 			}
-			return depPlugin.load(id,opts);
+			return walcVite.load(id,opts);
 		},
 	};
 }

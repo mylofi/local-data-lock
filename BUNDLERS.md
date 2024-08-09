@@ -2,11 +2,11 @@
 
 This project has non-ESM dependencies, which unfortunately cannot be *bundled* in with your other app code. Modern bundlers unfortunately don't out-of-the-box support configurations that can handle such a situation.
 
-As such, this project provides plugins for Vite and Webpack, to take care of the various steps needed to get these non-ESM dependencies into an otherwise bundled web app built by those tools.
+As such, this project provides plugins for Astro, Vite, and Webpack, to take care of the various steps needed to get these non-ESM dependencies into an otherwise bundled web app built by those tools.
 
 ## Bundler Plugins
 
-The plugins for Vite and Webpack are included in the `bundler-plugins/` directory. They should handle all necessary steps to load the dependencies.
+The plugins for Astro, Vite, and Webpack are included in the `bundler-plugins/` directory. They should handle all necessary steps to load the dependencies.
 
 **Note:** You should not need to manually copy any files out of the `dist/bundlers/` directory, as the plugins access the `local-data-lock` dependency (in `node_modules`) directly to pull the files needed. But for reference, the files these plugins access are:
 
@@ -22,9 +22,50 @@ The plugins for Vite and Webpack are included in the `bundler-plugins/` director
 
     Non-ESM (plain global .js) bundle of dependencies that must be loaded separately from (and prior to) your app's bundle.
 
+### Astro Plugin
+
+If using Astro 4+, it's strongly suggested to import this library's Astro-plugin to manage the loading of its non-ESM dependencies. Add something like the following to your `astro.config.mjs` file:
+
+```js
+import { defineConfig } from "astro/config";
+
+import LDL from "@lo-fi/local-data-lock/bundlers/astro";
+
+export default defineConfig({
+    // ..
+
+    integrations: [ LDL(), ],
+
+    vite: {
+        plugins: [
+            // pulls in some necessary bits of LDL's vite plugin
+            LDL.vite(),
+        ],
+
+        optimizeDeps: {
+            esbuildOptions: {
+                // LDL's WALC dependency uses "top-level await", which is ES2022+
+                target: "es2022",
+            },
+        },
+
+        build: {
+            // LDL's WALC dependency uses "top-level await", which is ES2022+
+            target: "es2022"
+        },
+    },
+
+    // ..
+});
+```
+
+This plugin works for the `astro dev` (dev-server), as well as `astro build` / `astro preview` modes. In all cases, it copies the WebAuthn-Local-Client (`@lo-fi/webauthn-local-client`) dependency bundle file (`/dist/bundlers/walc-external-bundle.js`) into the `public/` directory of your project root, as well as the `dist/` directory when running a build. It also injects an inline `<script>` element into the `<head>` of all generated pages, which dynamically loads the `/walc-external-bundle.js` script file (which has all the dependencies WALC needs).
+
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `WALC()` above with no arguments). If something about its behavior is not compatible with your Astro project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/astro.mjs` plugin and make necessary changes.
+
 ### Vite Plugin
 
-If using Vite 5+, it's strongly suggested to import this library's Vite-plugin to manage the loading of its non-ESM dependencies. Add something like the following to your `vite.config.js` file:
+If using Vite 5+ directly, it's strongly suggested to import this library's Vite-plugin to manage the loading of its non-ESM dependencies. Add something like the following to your `vite.config.js` file:
 
 ```js
 import { defineConfig } from "vite";
@@ -32,6 +73,8 @@ import LDL from "@lo-fi/local-data-lock/bundlers/vite";
 
 export default defineConfig({
     // ..
+
+    plugins: [ LDL() ],
 
     optimizeDeps: {
         esbuildOptions: {
@@ -44,8 +87,6 @@ export default defineConfig({
         // WALC (dependency) uses "top-level await", which is ES2022+
         target: "es2022"
     },
-
-    plugins: [ LDL() ],
 
     // ..
 });
@@ -122,4 +163,4 @@ To import and use **local-data-lock** in a *bundled* browser app:
 import { getLockKey, lockData, unlockData } from "@lo-fi/local-data-lock";
 ```
 
-When `import`ed like this, both Vite and Webpack should (via these plugins) properly find and bundle the `dist/bundlers/ldl.mjs` ESM library module with the rest of your app code, hopefully without any further steps necessary.
+When `import`ed like this, Astro, Vite, Webpack should (via these plugins) properly find and bundle the `dist/bundlers/ldl.mjs` ESM library module with the rest of your app code, hopefully without any further steps necessary.
