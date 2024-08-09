@@ -12,7 +12,6 @@ export default LDL;
 // ********************************
 
 function LDL() {
-	var command = null;
 	var walcAstro = walcAstroPlugin();
 	var vite = vitePlugin();
 
