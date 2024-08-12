@@ -130,7 +130,7 @@ async function getLockKey(
 	} = {},
 ) {
 	// local-identity already registered?
-	var identityRecord = localIdentities[localID];
+	var identityRecord = localID != null ? localIdentities[localID] : null;
 	if (identityRecord != null) {
 		// lock-key already in cache?
 		let lockKey = getCachedLockKey(localID);
@@ -169,6 +169,7 @@ async function getLockKey(
 					lockKey,
 				} = await registerLocalIdentity());
 				storeLocalIdentities();
+				cacheLockKey(localID,lockKey);
 
 				return {
 					...lockKey,
