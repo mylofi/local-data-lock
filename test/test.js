@@ -12,6 +12,10 @@ import {
 //    against the dist/* files
 from "local-data-lock/src";
 
+// simple helper util for showing a spinner
+// (during slower passkey operations)
+import { startSpinner, stopSpinner, } from "./spinner.js";
+
 
 // ***********************
 
@@ -212,6 +216,7 @@ async function registerAccount() {
 
 	if (username != null && displayName != null) {
 		try {
+			startSpinner();
 			let key = await getLockKey({
 				addNewPasskey: true,
 				username,
@@ -225,10 +230,12 @@ async function registerAccount() {
 			unlockAccountData(currentAccountID,key);
 			updateElements();
 			changeSelectedAccount();
+			stopSpinner();
 			showToast("Account (and passkey) registered.");
 		}
 		catch (err) {
 			logError(err);
+			stopSpinner();
 			showError("Registering account and passkey failed.");
 		}
 	}
@@ -236,6 +243,7 @@ async function registerAccount() {
 
 async function detectAccount() {
 	try {
+		startSpinner();
 		let key = await getLockKey();
 		if (!localAccountIDs.includes(key.localIdentity)) {
 			throw new Error("No account matching selected passkey");
@@ -244,10 +252,12 @@ async function detectAccount() {
 		unlockAccountData(currentAccountID,key);
 		updateElements();
 		changeSelectedAccount();
+		stopSpinner();
 		showToast("Account detected and unlocked via passkey.");
 	}
 	catch (err) {
 		logError(err);
+		stopSpinner();
 		showError("Detecting account via passkey authentication failed.");
 	}
 }
@@ -280,6 +290,7 @@ async function resetAllAccounts() {
 async function unlockAccount() {
 	if (selectAccountEl.selectedIndex > 0) {
 		try {
+			startSpinner();
 			let key = await getLockKey({ localIdentity: selectAccountEl.value, });
 			if (!localAccountIDs.includes(key.localIdentity)) {
 				throw new Error("No account found for selected passkey");
@@ -288,10 +299,12 @@ async function unlockAccount() {
 			unlockAccountData(currentAccountID,key);
 			updateElements();
 			changeSelectedAccount();
+			stopSpinner();
 			showToast("Account unlocked.");
 		}
 		catch (err) {
 			logError(err);
+			stopSpinner();
 			showError("Unlocking account via passkey failed.");
 		}
 	}
@@ -302,16 +315,19 @@ async function addPasskey() {
 
 	if (username != null && displayName != null) {
 		try {
+			startSpinner();
 			await getLockKey({
 				localIdentity: currentAccountID,
 				addNewPasskey: true,
 				username,
 				displayName,
 			});
+			stopSpinner();
 			showToast("Additional passkey added.");
 		}
 		catch (err) {
 			logError(err);
+			stopSpinner();
 			showError("Adding new passkey failed.");
 		}
 	}
@@ -336,6 +352,7 @@ async function resetAccount() {
 
 		if (username != null && displayName != null) {
 			try {
+				startSpinner();
 				let key = await getLockKey({
 					localIdentity: currentAccountID,
 					resetLockKey: true,
@@ -351,10 +368,12 @@ async function resetAccount() {
 				else {
 					storeAccountData(currentAccountID,"");
 				}
+				stopSpinner();
 				showToast("Account lock-key reset (and previous passkeys discarded).");
 			}
 			catch (err) {
 				logError(err);
+				stopSpinner();
 				showError("Resetting account failed.");
 			}
 		}
@@ -372,6 +391,7 @@ async function lockAccount() {
 
 async function saveData() {
 	try {
+		startSpinner();
 		let key = await getLockKey({ localIdentity: currentAccountID, });
 		if (accountDataEl.value != "") {
 			lockAccountData(currentAccountID,key,accountDataEl.value);
@@ -380,10 +400,12 @@ async function saveData() {
 			storeAccountData(currentAccountID,"");
 		}
 		saveDataBtn.disabled = true;
+		stopSpinner();
 		showToast("Data encrypted and saved.");
 	}
 	catch (err) {
 		logError(err);
+		stopSpinner();
 		showError("Saving (encrypted!) data to account failed.");
 	}
 }
