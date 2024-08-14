@@ -21,7 +21,6 @@ function showSpinner() {
 		showConfirmButton: false,
 		allowOutsideClick: false,
 		allowEscapeKey: false,
-		allowEnterKey: false,
 		customClass: {
 			popup: "spinner-popup",
 		},
