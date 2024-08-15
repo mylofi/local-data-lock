@@ -3,7 +3,17 @@
 [![npm Module](https://badge.fury.io/js/@lo-fi%2Flocal-data-lock.svg)](https://www.npmjs.org/package/@lo-fi/local-data-lock)
 [![License](https://img.shields.io/badge/license-MIT-a1356a)](LICENSE.txt)
 
-**Local Data Lock** provides a simple utility interface for encrypting and decrypting local-first application data using a keypair stored and protected by [Webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys).
+**Local Data Lock** provides a simple utility interface for encrypting and decrypting local-first application data using a keypair stored and protected by [Webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys), via the [**Webauthn Local Client** library](https://github.com/mylofi/webauthn-local-client) -- no servers required!
+
+```js
+var lockKey = await getLockKey({ .. });
+
+var encData = await lockData({ hello: "World!" },lockKey);
+// "aG4/z..."
+
+await unlockData(encData,lockKey);
+// { hello: "World!" }
+```
 
 ----
 
@@ -11,19 +21,31 @@
 
 ----
 
-The intent of this library is to store encrypted data on the device, and protect the encryption/decryption keypair securely in a passkey that the user can access by presenting their biometric factor(s). Further, the cryptographic keypair may also be used for secured asymmetric data transmission.
+## Overview
 
-The primary dependency of this library is [**WebAuthn-Local-Client**](https://github.com/mylofi/webauthn-local-client), which wraps the [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) for managing passkeys entirely in the local client (zero servers).
+This library can securely lock (encrypt) data in the local client, with no servers needed. The encrypted data *might also be* stored locally on the client device; for this purpose, please strongly consider using the [**Local Vault** library](https://github.com/mylofi/local-vault).
 
-**Local Data Lock** generates an encryption/decryption keypair, storing that securely in the passkey (via its `userHandle` field), which is protected by the authenticator/device. The library also stores entries for these passkeys in the device's [`LocalStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
+However, the encrypted data (by default, represented as a base64 encoded string) might be transmitted and stored elsewhere, such as on an app's servers. The cryptographic keypair may be used for digital signatures to verify secure data transmission.
 
-**NOTE:** This public-key for a passkey is *NOT* in any way related to the encryption/decryption keypair, which **Local Data Lock** does not persist anywhere on the device (only kept in memory). It's *only* used for authentication verification (protecting against MitM attacks on the device biometric system). Verification defaults to on, but can be skipped by passing `verify: false` as an option to the `getLockKey()` method.
+This cryptographic keypair is protected locally on the user's device in a biometric passkey; the user can easily unlock (decrypt) their data, or verify a received data transmission from their other device, by presenting a biometric factor to retrieve the keypair.
 
-Your application accesses the encryption/decryption keypair via `getLockKey()`, and may optionally decide if you want to persist it somewhere -- for more convenience/ease-of-use, as compared to asking the user to re-authenticate their passkey on each usage. But you are cautioned to be very careful in such decisions, striking an appropriate balance between security and convenience.
+### How does it work?
 
-To assist in making these difficult tradeoffs, **Local Data Lock** internally caches the encryption/decryption key after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); a user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted from 0ms or higher, using the `setMaxLockKeyCacheLifetime()` method.
+The direct dependency of this library is [**WebAuthn-Local-Client**](https://github.com/mylofi/webauthn-local-client), which utilizes the browser's [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) for managing biometric passkeys entirely in the local client (zero servers).
 
-You are strongly encouraged **NOT** to persist the encryption/decryption key, and to utilize this time-based caching mechanism.
+The cryptographic keypair the library generates, is attached securely to a passkey (via its `userHandle` field), which is protected by the authenticator/device. The library also stores meta-data entries for these passkeys in the device's [`LocalStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
+
+**NOTE:** This public-key for a passkey is *NOT* in any way related to the crytographic keypair, which **Local Data Lock** does not persist anywhere on the device (only kept in memory). It's *only* used for authentication verification -- protecting against MitM attacks against the authenticator. Verification defaults *on*, but can be skipped by passing `verify: false` as an option to the `getLockKey()` method.
+
+### Security vs Convenience
+
+Your application accesses the cryptographic keypair via `getLockKey()`, and may optionally decide if you want to persist it somewhere -- for more convenience/ease-of-use, as compared to asking the user to re-authenticate their passkey on each usage. But you are cautioned to be very careful in such decisions, striking an appropriate balance between security and convenience.
+
+If the design is *too convenient* (e.g., once-forever logins), it's likely to be insecure (and the user may not realize it!). If the design is *too secure*, it's likely to have so much UX friction that users won't use it (or your app).
+
+To assist in making these difficult tradeoffs, **Local Data Lock** internally caches the cryptographic keypair after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); in such a setup, the user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted, from 0ms upward, using the `setMaxLockKeyCacheLifetime()` method.
+
+You are strongly encouraged **NOT** to persist the encryption/decryption key, and to instead rely on this time-based caching mechanism.
 
 ## Deployment / Import
 
@@ -55,7 +77,7 @@ else {
 }
 ```
 
-## Registering a local account
+## Registering a local account (and lock-key keypair)
 
 A "local account" is merely a collection of one or more passkeys that are all holding the same encryption/decryption keypair. There's no limit on the number of "local account" passkey collections on a device (other than device storage limits).
 
@@ -71,6 +93,49 @@ The returned keypair result will also include a `localIdentity` property, with a
 
 ```js
 var currentAccountID = key.localIdentity;
+```
+
+### Lock-Key Value Format
+
+Other than reading the `localIdentity` property, the lock-key object should be **treated opaquely**, meaning that you don't rely on its structure, don't make any changes to it, etc.
+
+It contains binary data for the keypairs, in the form of various `Uint8Array` values. These types of data are not, as-is, particularly serialization safe (JSON, etc), for the purposes of storage or transmission. To serialize these binary-array values (and unserialize them later), you can use the `toBase64String()` / `fromBase64String()` utilities exported on the library's API.
+
+For example, to serialize a lock-key for JSON-safe storage, or transmission:
+
+```js
+var serializedKey = Object.fromEntries(
+    Object.entries(key)
+    .map(([ prop, value ]) => [
+        prop,
+        (
+            value instanceof Uint8Array &&
+            value.buffer instanceof ArrayBuffer
+        ) ?
+            toBase64String(value) :
+            value
+    ])
+);
+```
+
+And to deserialize:
+
+```js
+var key = Object.fromEntries(
+    Object.entries(serializedKey)
+    .map(([ prop, value ]) => [
+        prop,
+        (
+            typeof value == "string" &&
+
+            // padded base64 encoding of Uint8Array(32)
+            // will be at least 44 characters long
+            value.length >= 44
+        ) ?
+            fromBase64String(value) :
+            value
+    ])
+);
 ```
 
 ### Obtaining the keypair from existing account/passkey
@@ -247,7 +312,7 @@ When registering a new local-account:
 ```js
 var key = await getLockKey({
     addNewPasskey: true,
-    importLockKey: existingLockKey,
+    useLockKey: existingLockKey,
 });
 key === existingLockKey;        // true
 ```
@@ -258,12 +323,12 @@ When resetting the key on an existing local-account:
 var key = await getLockKey({
     localIdentitity: currentAccountID,
     resetLockKey: true,
-    importLockKey: existingLockKey,
+    useLockKey: existingLockKey,
 });
 key === existingLockKey;        // true
 ```
 
-**Warning:** You should generally let **Local Data Lock** internally generate and manage the lock-keys on local-accounts, and should not store (or transmit) these lock-keys in a way that degrades the security promises of this library. Be very careful if you are using the library in a way that you need to use `importLockKey`, and make sure it's absolutely necessary.
+**Warning:** You should generally let **Local Data Lock** internally generate and manage the lock-keys on local-accounts, and should not store (or transmit) these lock-keys in a way that degrades the security promises of this library. Be very careful if you are using the library in a way that you need to use `useLockKey`, and make sure it's absolutely necessary.
 
 ## WebAuthn-Local-Client Utilities
 
