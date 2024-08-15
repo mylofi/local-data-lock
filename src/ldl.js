@@ -17,6 +17,7 @@ import {
 
 // ***********************
 
+const CURRENT_LOCK_KEY_FORMAT_VERSION = 1;
 const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES;
 var MAX_LOCK_KEY_CACHE_LIFETIME = setMaxLockKeyCacheLifetime();
 var localIdentities = loadLocalIdentities();
@@ -123,9 +124,9 @@ async function getLockKey(
 		displayName = "Local User",
 		relyingPartyID = document.location.hostname,
 		relyingPartyName = "Local Data Lock",
-
 		addNewPasskey = false,
 		resetLockKey = false,
+		useLockKey = null,
 		verify = true,
 	} = {},
 ) {
@@ -157,7 +158,7 @@ async function getLockKey(
 			// remove expired cache entry (if any)
 			delete lockKeyCache[localID];
 
-			// create new lock-key (and passkey)?
+			// create (or import) new lock-key (and passkey)?
 			if (resetLockKey) {
 				resetAbortToken();
 
@@ -167,8 +168,14 @@ async function getLockKey(
 				({
 					record: localIdentities[localID],
 					lockKey,
-				} = await registerLocalIdentity());
+				} = await registerLocalIdentity(
+					// manually importing an external lock-key?
+					useLockKey && typeof useLockKey == "object" ?
+						checkLockKey(useLockKey) :
+						undefined
+				));
 				storeLocalIdentities();
+
 				cacheLockKey(localID,lockKey);
 
 				return {
@@ -273,7 +280,12 @@ async function getLockKey(
 	// new local-identity needs initial registration
 	else {
 		resetAbortToken();
-		let { record, lockKey, } = await registerLocalIdentity();
+		let { record, lockKey, } = await registerLocalIdentity(
+			// manually importing an external lock-key?
+			useLockKey && typeof useLockKey == "object" ?
+				checkLockKey(useLockKey) :
+				undefined
+		);
 		localIdentities[localID] = record;
 		cacheLockKey(localID,lockKey);
 		storeLocalIdentities();
@@ -330,7 +342,6 @@ async function getLockKey(
 			};
 		}
 		catch (err) {
-			console.log(err);
 			throw new Error("Identity/Passkey registration failed",{ cause: err, });
 		}
 	}
@@ -375,6 +386,7 @@ function deriveLockKey(iv = generateEntropy(IV_BYTE_LENGTH)) {
 	try {
 		let ed25519KeyPair = sodium.crypto_sign_seed_keypair(iv);
 		return {
+			keyFormatVersion: CURRENT_LOCK_KEY_FORMAT_VERSION,
 			iv,
 			publicKey: ed25519KeyPair.publicKey,
 			privateKey: ed25519KeyPair.privateKey,
@@ -389,6 +401,26 @@ function deriveLockKey(iv = generateEntropy(IV_BYTE_LENGTH)) {
 	catch (err) {
 		throw new Error("Encryption/decryption key derivation failed.",{ cause: err, });
 	}
+}
+
+function checkLockKey(lockKeyCandidate) {
+	if (
+		lockKeyCandidate &&
+		typeof lockKeyCandidate == "object"
+	) {
+		// assume current format key?
+		if (lockKeyCandidate.keyFormatVersion === CURRENT_LOCK_KEY_FORMAT_VERSION) {
+			return lockKeyCandidate;
+		}
+		// contains a suitable `iv` we can derive from?
+		else if (
+			isByteArray(lockKeyCandidate.iv) &&
+			lockKeyCandidate.iv.byteLength == IV_BYTE_LENGTH
+		) {
+			return deriveLockKey(lockKeyCandidate.iv);
+		}
+	}
+	throw new Error("Unrecongnized lock-key");
 }
 
 function lockData(
