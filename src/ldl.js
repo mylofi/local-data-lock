@@ -23,6 +23,7 @@ var MAX_LOCK_KEY_CACHE_LIFETIME = setMaxLockKeyCacheLifetime();
 var localIdentities = loadLocalIdentities();
 var lockKeyCache = {};
 var abortToken = null;
+var externalSignalCache = new WeakMap();
 
 
 // ***********************
@@ -36,6 +37,7 @@ export {
 	fromBase64String,
 	toUTF8String,
 	fromUTF8String,
+	resetAbortReason,
 
 	// main library API:
 	listLocalIdentities,
@@ -57,6 +59,7 @@ var publicAPI = {
 	fromBase64String,
 	toUTF8String,
 	fromUTF8String,
+	resetAbortReason,
 
 	// main library API:
 	listLocalIdentities,
@@ -88,6 +91,7 @@ function getCachedLockKey(localID) {
 			Date.now() - MAX_LOCK_KEY_CACHE_LIFETIME
 		)
 	) {
+		// discard cache-internal timestamp field
 		let { timestamp, ...lockKey } = lockKeyCache[localID];
 		return lockKey;
 	}
@@ -97,6 +101,9 @@ function cacheLockKey(localID,lockKey,forceUpdate = false) {
 	if (!(localID in lockKeyCache) || forceUpdate) {
 		lockKeyCache[localID] = {
 			...lockKey,
+
+			// cache-internal timestamp field, for recency
+			// expiration check
 			timestamp: Date.now(),
 		};
 	}
@@ -128,6 +135,7 @@ async function getLockKey(
 		resetLockKey = false,
 		useLockKey = null,
 		verify = true,
+		signal: cancelLockKey,
 	} = {},
 ) {
 	// local-identity already registered?
@@ -137,22 +145,29 @@ async function getLockKey(
 		let lockKey = getCachedLockKey(localID);
 		if (lockKey != null && !resetLockKey) {
 			if (addNewPasskey) {
-				resetAbortToken();
+				resetAbortToken(cancelLockKey);
 
-				let { record, } = await registerLocalIdentity(lockKey);
-				identityRecord.lastSeq = record.lastSeq;
-				identityRecord.passkeys = [
-					...identityRecord.passkeys,
-					...record.passkeys
-				];
-				storeLocalIdentities();
+				let { record, } = (await registerLocalIdentity(lockKey)) || {};
+
+				cleanupExternalSignalHandler(abortToken);
+				abortToken = null;
+
+				// new passkey registration succeeded?
+				if (record != null) {
+					identityRecord.lastSeq = record.lastSeq;
+					identityRecord.passkeys = [
+						...identityRecord.passkeys,
+						...record.passkeys
+					];
+					storeLocalIdentities();
+				}
 			}
 
 			// return cached lock-key info
-			return {
+			return Object.freeze({
 				...lockKey,
 				localIdentity: localID,
-			};
+			});
 		}
 		else {
 			// remove expired cache entry (if any)
@@ -160,7 +175,7 @@ async function getLockKey(
 
 			// create (or import) new lock-key (and passkey)?
 			if (resetLockKey) {
-				resetAbortToken();
+				resetAbortToken(cancelLockKey);
 
 				// throw away previous identity record (including
 				// previous passkeys) and replace with this new
@@ -168,24 +183,34 @@ async function getLockKey(
 				({
 					record: localIdentities[localID],
 					lockKey,
-				} = await registerLocalIdentity(
+				} = (await registerLocalIdentity(
 					// manually importing an external lock-key?
 					useLockKey && typeof useLockKey == "object" ?
 						checkLockKey(useLockKey) :
 						undefined
-				));
-				storeLocalIdentities();
+				))) || {};
 
-				cacheLockKey(localID,lockKey);
+				cleanupExternalSignalHandler(abortToken);
+				abortToken = null;
 
-				return {
-					...lockKey,
-					localIdentity: localID,
-				};
+				// registration failed?
+				if (localIdentities[localID] == null) {
+					delete localIdentities[localID];
+				}
+				// registration succeeded, lock-key returned?
+				else if (lockKey != null) {
+					storeLocalIdentities();
+					cacheLockKey(localID,lockKey);
+
+					return Object.freeze({
+						...lockKey,
+						localIdentity: localID,
+					});
+				}
 			}
 			// auth with existing passkey (and cache resulting lock-key)?
 			else if (!addNewPasskey) {
-				resetAbortToken();
+				resetAbortToken(cancelLockKey);
 
 				let authOptions = authDefaults({
 					relyingPartyID,
@@ -199,6 +224,70 @@ async function getLockKey(
 					signal: abortToken.signal,
 				});
 				let authResult = await auth(authOptions);
+
+				cleanupExternalSignalHandler(abortToken);
+				abortToken = null;
+
+				// authentication succeeded?
+				if (authResult != null) {
+					// verify auth result?
+					if (verify) {
+						let passkey = identityRecord.passkeys.find(passkey => (
+							passkey.credentialID == authResult.response.credentialID
+						));
+						let publicKey = (passkey != null) ? passkey.publicKey : null;
+						let verified = (
+							(publicKey != null) ? await verifyAuthResponse(authResult.response,publicKey) : false
+						);
+						if (!verified) {
+							throw new Error("Auth verification failed");
+						}
+					}
+
+					return {
+						...extractLockKey(authResult),
+						localIdentity: localID,
+					};
+				}
+			}
+			else {
+				throw new Error("Encryption/Decryption key not currently cached, unavailable for new passkey");
+			}
+		}
+	}
+	// attempt auth (with existing discoverable passkey) to extract
+	// (and cache!) existing lock-key?
+	else if (!addNewPasskey) {
+		resetAbortToken(cancelLockKey);
+		let authOptions = authDefaults({
+			relyingPartyID,
+			mediation: "optional",
+			signal: abortToken.signal,
+		});
+		let authResult = await auth(authOptions);
+
+		cleanupExternalSignalHandler(abortToken);
+		abortToken = null;
+
+		// authentication succeeded?
+		if (authResult != null) {
+			let lockKey = extractLockKey(authResult);
+
+			// find matching local-identity (if any)
+			let [ matchingLocalID, ] = (
+				Object.entries(localIdentities)
+				.find(([ , record, ]) => (
+					record.passkeys.find(passkey => (
+						// matching credential used for authentication?
+						passkey.credentialID == authResult.response.credentialID
+					)) != null
+				))
+			) || [];
+			// discard auto-generated local-id, use matching local-id?
+			if (matchingLocalID != null) {
+				delete lockKeyCache[localID];
+				localID = matchingLocalID;
+				identityRecord = localIdentities[localID];
 
 				// verify auth result?
 				if (verify) {
@@ -214,85 +303,42 @@ async function getLockKey(
 					}
 				}
 
-				return {
-					...extractLockKey(authResult),
-					localIdentity: localID,
-				};
+				cacheLockKey(localID,lockKey);
 			}
-			else {
-				throw new Error("Encryption/Decryption key not currently cached, unavailable for new passkey");
-			}
-		}
-	}
-	// attempt auth (with existing discoverable passkey) to extract
-	// (and cache!) existing lock-key?
-	else if (!addNewPasskey) {
-		resetAbortToken();
-		let authOptions = authDefaults({
-			relyingPartyID,
-			mediation: "optional",
-			signal: abortToken.signal,
-		});
-		let authResult = await auth(authOptions);
-		let lockKey = extractLockKey(authResult);
-
-		// find matching local-identity (if any)
-		let [ matchingLocalID, ] = (
-			Object.entries(localIdentities)
-			.find(([ , record, ]) => (
-				record.passkeys.find(passkey => (
-					// matching credential used for authentication?
-					passkey.credentialID == authResult.response.credentialID
-				)) != null
-			))
-		) || [];
-		// discard auto-generated local-id, use matching local-id?
-		if (matchingLocalID != null) {
-			delete lockKeyCache[localID];
-			localID = matchingLocalID;
-			identityRecord = localIdentities[localID];
-
-			// verify auth result?
-			if (verify) {
-				let passkey = identityRecord.passkeys.find(passkey => (
-					passkey.credentialID == authResult.response.credentialID
-				));
-				let publicKey = (passkey != null) ? passkey.publicKey : null;
-				let verified = (
-					(publicKey != null) ? await verifyAuthResponse(authResult.response,publicKey) : false
-				);
-				if (!verified) {
-					throw new Error("Auth verification failed");
-				}
+			else if (verify) {
+				throw new Error("Auth verification requested but skipped, against unrecognized passkey (no matching local-identity)");
 			}
 
-			cacheLockKey(localID,lockKey);
+			return Object.freeze({
+				...lockKey,
+				localIdentity: localID,
+			});
 		}
-		else if (verify) {
-			throw new Error("Auth verification requested but skipped, against unrecognized passkey (no matching local-identity)");
-		}
-
-		return {
-			...lockKey,
-			localIdentity: localID,
-		};
 	}
 	// new local-identity needs initial registration
 	else {
-		resetAbortToken();
-		let { record, lockKey, } = await registerLocalIdentity(
+		resetAbortToken(cancelLockKey);
+		let { record, lockKey, } = (await registerLocalIdentity(
 			// manually importing an external lock-key?
 			useLockKey && typeof useLockKey == "object" ?
 				checkLockKey(useLockKey) :
 				undefined
-		);
-		localIdentities[localID] = record;
-		cacheLockKey(localID,lockKey);
-		storeLocalIdentities();
-		return {
-			...lockKey,
-			localIdentity: localID,
-		};
+		)) || {};
+
+		cleanupExternalSignalHandler(abortToken);
+		abortToken = null;
+
+		// registration succeeded, lock-key returned?
+		if (record != null && lockKey != null) {
+			localIdentities[localID] = record;
+			cacheLockKey(localID,lockKey);
+			storeLocalIdentities();
+
+			return Object.freeze({
+				...lockKey,
+				localIdentity: localID,
+			});
+		}
 	}
 
 
@@ -327,19 +373,21 @@ async function getLockKey(
 			});
 			let regResult = await register(regOptions);
 
-			return {
-				record: {
-					lastSeq,
-					passkeys: [
-						buildPasskeyEntry({
-							seq: lastSeq,
-							credentialID: regResult.response.credentialID,
-							publicKey: regResult.response.publicKey,
-						}),
-					],
-				},
-				lockKey,
-			};
+			if (regResult != null) {
+				return {
+					record: {
+						lastSeq,
+						passkeys: [
+							buildPasskeyEntry({
+								seq: lastSeq,
+								credentialID: regResult.response.credentialID,
+								publicKey: regResult.response.publicKey,
+							}),
+						],
+					},
+					lockKey,
+				};
+			}
 		}
 		catch (err) {
 			throw new Error("Identity/Passkey registration failed",{ cause: err, });
@@ -370,12 +418,45 @@ async function getLockKey(
 	}
 }
 
-function resetAbortToken() {
+function resetAbortToken(externalSignal) {
 	// previous attempt still pending?
 	if (abortToken) {
-		abortToken.abort("Passkey operation abandoned.");
+		cleanupExternalSignalHandler(abortToken);
+
+		if (!abortToken.aborted) {
+			abortToken.abort("Passkey operation abandoned.");
+		}
 	}
 	abortToken = new AbortController();
+
+	// new external abort-signal passed in, to chain
+	// off of?
+	if (externalSignal != null) {
+	    // signal already aborted?
+		if (externalSignal.aborted) {
+			abortToken.abort(externalSignal.reason);
+		}
+		// listen to future abort-signal
+		else {
+			let handlerFn = () => {
+				cleanupExternalSignalHandler(abortToken);
+				abortToken.abort(externalSignal.reason);
+				abortToken = externalSignal = handlerFn = null;
+			};
+			externalSignal.addEventListener("abort",handlerFn);
+			externalSignalCache.set(abortToken,[ externalSignal, handlerFn, ]);
+		}
+	}
+}
+
+function cleanupExternalSignalHandler(token) {
+	// controller previously attached to an
+	// external abort-signal?
+	if (token != null && externalSignalCache.has(token)) {
+		let [ prevExternalSignal, handlerFn, ] = externalSignalCache.get(token);
+		prevExternalSignal.removeEventListener("abort",handlerFn);
+		externalSignalCache.delete(token);
+	}
 }
 
 function generateEntropy(numBytes = 16) {

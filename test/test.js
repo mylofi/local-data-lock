@@ -6,6 +6,7 @@ import {
 	lockData,
 	unlockData,
 	setMaxLockKeyCacheLifetime,
+	resetAbortReason,
 }
 // note: this module specifier comes from the import-map
 //    in index.html; swap "src" for "dist" here to test
@@ -316,14 +317,16 @@ async function addPasskey() {
 	if (username != null && displayName != null) {
 		try {
 			startSpinner();
-			await getLockKey({
+			let result = await getLockKey({
 				localIdentity: currentAccountID,
 				addNewPasskey: true,
 				username,
 				displayName,
 			});
 			stopSpinner();
-			showToast("Additional passkey added.");
+			if (result != null) {
+				showToast("Additional passkey added.");
+			}
 		}
 		catch (err) {
 			logError(err);
@@ -456,7 +459,7 @@ function showError(errMsg) {
 		title: "Error!",
 		text: errMsg,
 		icon: "error",
-		confirmButtonText: "ok",
+		confirmButtonText: "OK",
 	});
 }
 

@@ -223,6 +223,41 @@ The `relyingPartyID` should be the canonical hostname of the web application, or
 
 Three of the options (`username`, `displayName`, and `relyingPartName`) are *only* valid when creating a new passkey, in either `addNewPasskey: true` or `resetLockKey: true` modes; the `relyingPartyID` option can/should be used in all `getLockKey()` calls.
 
+### Canceling Pending Lock-Key Request
+
+If a call to `getLockKey(..)` requires a passkey (re)authentication, there may be a substantial delay while the user is navigating the system prompts. Calling `getLockKey()` a subsequent time, while another `getLockKey()` is currently pending, will abort that previous call -- and should cancel any open system dialogs the user is interacting with.
+
+However, you may want to cancel a currently pending `getLockKey()` *without* having to call `getLockKey()` again, for example based on a timeout if authentication is taking too long. To be able to cancel this asynchronous operation, pass in an [`AbortController.signal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortController/signal) instance, as a `signal` option to `getLockKey()`:
+
+```js
+var cancelToken = new AbortController();
+var key = await getLockKey({
+    /* .. */,
+    signal: cancelToken.signal
+});
+
+// elsewhere:
+cancelToken.abort("Taking too long!");
+```
+
+Aborting a cancellation token while the `getLockKey()` is still pending (i.e., at an `await`), will by default throw an exception at that point. However, in some UX flows -- such as intending to call `getLockKey()` again with different options -- you may want to silently cancel that currently pending `getLockKey()` *without* throwing an exception.
+
+Pass the `resetAbortReason` value to the `abort()` call:
+
+```js
+import { resetAbortReason, getLockKey } from "..";
+
+var key = await getLockKey({
+    /* .. */,
+    signal: cancelToken.signal
+});
+
+// elsewhere:
+cancelToken.abort(resetAbortReason);
+```
+
+The current `getLockKey()` will now cleanly and silently cancel, **and its return value will be `undefined`**.
+
 ## Encrypt some data
 
 Once a keypair has been obtained, to encrypt application data:
