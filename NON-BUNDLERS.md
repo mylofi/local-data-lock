@@ -24,11 +24,9 @@ To import and use **local-data-lock** in a *non-bundled* browser app:
 import { getLockKey, lockData, unlockData } from "/path/to/js-assets/local-data-lock/ldl.js";
 ```
 
-The library's dependencies will be auto-loaded (via `external.js`).
-
 ## Using Import Map
 
-If your **non-bundled** browser app has an [Import Map](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap), you can improve the `import` by adding an entry for this library:
+If your **non-bundled** browser app has an [Import Map](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap) in its HTML (strongly recommended!), you can improve the `import` by adding an entries for this library and its dependencies:
 
 ```html
 <script type="importmap">
@@ -48,4 +46,4 @@ Now, you'll be able to `import` the library in your app in a friendly/readable w
 import { getLockKey, lockData, unlockData } from "local-data-lock";
 ```
 
-**Note:** If you omit the above `"local-data-lock"` import-map entry, you can still `import` **local-data-lock** by specifying the proper path to `ldl.js`. However, the entry above for `"@lo-fi/webauthn-local-client"` is more required. Alternatively, you'll have to manually edit the `ldl.js` file to change its `import` specifier from `"@lo-fi/webauthn-local-client"` to the proper path to `walc.js`.
+**Note:** If you omit the above `"local-data-lock"` import-map entry, you can still `import` **local-data-lock** by specifying the proper path to `ldl.js` (as shown above). However, the entry above for `"@lo-fi/webauthn-local-client"` is more required. Alternatively, you'll have to manually edit the `ldl.js` file to change its `import` specifier from `"@lo-fi/webauthn-local-client"` to the proper path to `walc.js`.
