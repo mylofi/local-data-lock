@@ -11,6 +11,8 @@
 .swal2-popup .modal-btn { display: inline-block; color: white; background-color: black; border: 0; border-radius: 0.25em; font-size: 1em !important; }
 ul { list-style-type: none; padding: 0; }
 ul li { margin: 0.7rem; }
+#settings-controls { display: flex; flex-wrap: wrap; gap: 25px; margin: 25px 0px; }
+#settings-controls abbr { font-weight: bold; font-size:125%; cursor: default; }
 </style>
 </head>
 <body>
@@ -37,6 +39,8 @@ ul li { margin: 0.7rem; }
 	<li>Wait at least 1 minute, then enter (or change) some text, and click 'save'; you will be prompted to re-authenticate a registered passkey.</li>
 	<li>While logged into both accounts, you will be able to switch between them (using the dropdown and the 'login to account' button), and update the text for each account and click 'save' button... all <strong>WITHOUT</strong> being re-prompted for any passkeys; once the 1 minute has expired, you'll be prompted for the passkey at the first interaction with each account.
 	<li>Click the 'reset account' button; you will be prompted to create a new passkey for the current account (previous passkeys will be discarded).</li>
+	<li>Change the passkey timeout from 0 to 5 (seconds).</li>
+	<li>Click 'lock account', then 'unlock account'. Wait for at least 5 seconds, and see the authentication dialog be canceled/closed and an error message displayed.</li>
 </ol>
 
 <p>When complete with testing:</p>
@@ -48,12 +52,22 @@ ul li { margin: 0.7rem; }
 
 <hr>
 
-<p>
-	<label>
-		Passkey Keep-Alive: <input type="text" id="passkey-keep-alive" value="30" size="2">min
-	</label>
-	<button type="button" id="set-passkey-keep-alive-btn">set</button>
-</p>
+<div id="settings-controls">
+	<div>
+		<label>
+			<abbr title="How long to keep a successful passkey authentication alive in a recent-use cache">(?)</abbr>
+			Passkey Keep-Alive: <input type="text" id="passkey-keep-alive" value="30" size="2">min
+		</label>
+		<button type="button" id="set-passkey-keep-alive-btn">set</button>
+	</div>
+	<div>
+		<label>
+			<abbr title="How long to wait during a passkey authentication before cancelling">(?)</abbr>
+			Passkey Timeout: <input type="text" id="passkey-timeout" value="0" size="2">sec
+		</label>
+		<button type="button" id="set-passkey-timeout-btn">set</button> <small>(0 to disable)</small>
+	</div>
+</div>
 <p>
 	<button type="button" id="register-account-btn">register local account</button>
 	<button type="button" id="detect-account-btn" disabled>detect (and unlock) account</button>

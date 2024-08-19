@@ -22,6 +22,8 @@ import { startSpinner, stopSpinner, } from "./spinner.js";
 
 var passkeyKeepAliveEl;
 var setPasskeyKeepAliveBtn;
+var passkeyTimeoutEl;
+var setPasskeyTimeoutBtn;
 var registerAccountBtn;
 var detectAccountBtn;
 var resetAllAccountsBtn;
@@ -35,6 +37,7 @@ var saveDataBtn;
 
 var currentAccountID;
 var localAccountIDs = listLocalIdentities();
+var passkeyTimeout = 0;
 
 if (document.readyState == "loading") {
 	document.addEventListener("DOMContentLoaded",ready,false);
@@ -49,6 +52,8 @@ else {
 async function ready() {
 	passkeyKeepAliveEl = document.getElementById("passkey-keep-alive");
 	setPasskeyKeepAliveBtn = document.getElementById("set-passkey-keep-alive-btn");
+	passkeyTimeoutEl = document.getElementById("passkey-timeout");
+	setPasskeyTimeoutBtn = document.getElementById("set-passkey-timeout-btn");
 	registerAccountBtn = document.getElementById("register-account-btn");
 	detectAccountBtn = document.getElementById("detect-account-btn");
 	resetAllAccountsBtn = document.getElementById("reset-all-accounts-btn");
@@ -64,6 +69,7 @@ async function ready() {
 	accountDataEl.addEventListener("input",onChangeAccountData,false);
 
 	setPasskeyKeepAliveBtn.addEventListener("click",setKeepAlive,false);
+	setPasskeyTimeoutBtn.addEventListener("click",setPasskeyTimeout,false);
 	registerAccountBtn.addEventListener("click",registerAccount,false);
 	detectAccountBtn.addEventListener("click",detectAccount,false);
 	resetAllAccountsBtn.addEventListener("click",resetAllAccounts,false);
@@ -132,6 +138,18 @@ async function setKeepAlive() {
 
 	setMaxLockKeyCacheLifetime(keepAlive * 60 * 1000);
 	showToast(`Passkey Keep-Alive set to ${keepAlive} minute(s)`);
+}
+
+async function setPasskeyTimeout() {
+	passkeyTimeout = Math.max(0,Number(passkeyTimeoutEl.value != null ? passkeyTimeoutEl.value : 0));
+	passkeyTimeoutEl.value = passkeyTimeout;
+
+	if (passkeyTimeout > 0) {
+		showToast(`Passkey Timeout set to ${passkeyTimeout} second(s)`);
+	}
+	else {
+		showToast(`Passkey Timeout disabled (0 seconds)`);
+	}
 }
 
 async function promptAddPasskey() {
@@ -213,39 +231,47 @@ async function promptAddPasskey() {
 }
 
 async function registerAccount() {
-	let { passkeyUsername: username, passkeyDisplayName: displayName, } = (await promptAddPasskey() || {});
+	var { passkeyUsername: username, passkeyDisplayName: displayName, } = (await promptAddPasskey() || {});
 
-	if (username != null && displayName != null) {
-		try {
-			startSpinner();
-			let key = await getLockKey({
-				addNewPasskey: true,
-				username,
-				displayName,
-			});
-			localAccountIDs = listLocalIdentities();
-			if (!localAccountIDs.includes(key.localIdentity)) {
-				throw new Error("No account found for selected passkey");
-			}
-			selectAccountEl.value = currentAccountID = key.localIdentity;
-			unlockAccountData(currentAccountID,key);
-			updateElements();
-			changeSelectedAccount();
-			stopSpinner();
-			showToast("Account (and passkey) registered.");
+	if (!(username != null && displayName != null)) {
+		return;
+	}
+
+	var { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
+	try {
+		startSpinner();
+		let key = await getLockKey({
+			addNewPasskey: true,
+			username,
+			displayName,
+			signal,
+		});
+		if (intv != null) { clearTimeout(intv); }
+		localAccountIDs = listLocalIdentities();
+		if (!localAccountIDs.includes(key.localIdentity)) {
+			throw new Error("No account found for selected passkey");
 		}
-		catch (err) {
-			logError(err);
-			stopSpinner();
-			showError("Registering account and passkey failed.");
-		}
+		selectAccountEl.value = currentAccountID = key.localIdentity;
+		unlockAccountData(currentAccountID,key);
+		updateElements();
+		changeSelectedAccount();
+		stopSpinner();
+		showToast("Account (and passkey) registered.");
+	}
+	catch (err) {
+		if (intv != null) { clearTimeout(intv); }
+		logError(err);
+		stopSpinner();
+		showError("Registering account and passkey failed.");
 	}
 }
 
 async function detectAccount() {
+	var { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
 	try {
 		startSpinner();
-		let key = await getLockKey();
+		let key = await getLockKey({ signal, });
+		if (intv != null) { clearTimeout(intv); }
 		if (!localAccountIDs.includes(key.localIdentity)) {
 			throw new Error("No account matching selected passkey");
 		}
@@ -257,6 +283,7 @@ async function detectAccount() {
 		showToast("Account detected and unlocked via passkey.");
 	}
 	catch (err) {
+		if (intv != null) { clearTimeout(intv); }
 		logError(err);
 		stopSpinner();
 		showError("Detecting account via passkey authentication failed.");
@@ -289,50 +316,64 @@ async function resetAllAccounts() {
 }
 
 async function unlockAccount() {
-	if (selectAccountEl.selectedIndex > 0) {
-		try {
-			startSpinner();
-			let key = await getLockKey({ localIdentity: selectAccountEl.value, });
-			if (!localAccountIDs.includes(key.localIdentity)) {
-				throw new Error("No account found for selected passkey");
-			}
-			selectAccountEl.value = currentAccountID = key.localIdentity;
-			unlockAccountData(currentAccountID,key);
-			updateElements();
-			changeSelectedAccount();
-			stopSpinner();
-			showToast("Account unlocked.");
+	if (selectAccountEl.selectedIndex == 0) {
+		return;
+	}
+
+	var { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
+	try {
+		startSpinner();
+		let key = await getLockKey({
+			localIdentity: selectAccountEl.value,
+			signal,
+		});
+		if (intv != null) { clearTimeout(intv); }
+		if (!localAccountIDs.includes(key.localIdentity)) {
+			throw new Error("No account found for selected passkey");
 		}
-		catch (err) {
-			logError(err);
-			stopSpinner();
-			showError("Unlocking account via passkey failed.");
-		}
+		selectAccountEl.value = currentAccountID = key.localIdentity;
+		unlockAccountData(currentAccountID,key);
+		updateElements();
+		changeSelectedAccount();
+		stopSpinner();
+		showToast("Account unlocked.");
+	}
+	catch (err) {
+		if (intv != null) { clearTimeout(intv); }
+		logError(err);
+		stopSpinner();
+		showError("Unlocking account via passkey failed.");
 	}
 }
 
 async function addPasskey() {
-	let { passkeyUsername: username, passkeyDisplayName: displayName, } = (await promptAddPasskey() || {});
+	var { passkeyUsername: username, passkeyDisplayName: displayName, } = (await promptAddPasskey() || {});
 
-	if (username != null && displayName != null) {
-		try {
-			startSpinner();
-			let result = await getLockKey({
-				localIdentity: currentAccountID,
-				addNewPasskey: true,
-				username,
-				displayName,
-			});
-			stopSpinner();
-			if (result != null) {
-				showToast("Additional passkey added.");
-			}
+	if (!(username != null && displayName != null)) {
+		return;
+	}
+
+	var { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
+	try {
+		startSpinner();
+		let result = await getLockKey({
+			localIdentity: currentAccountID,
+			addNewPasskey: true,
+			username,
+			displayName,
+			signal,
+		});
+		if (intv != null) { clearTimeout(intv); }
+		stopSpinner();
+		if (result != null) {
+			showToast("Additional passkey added.");
 		}
-		catch (err) {
-			logError(err);
-			stopSpinner();
-			showError("Adding new passkey failed.");
-		}
+	}
+	catch (err) {
+		if (intv != null) { clearTimeout(intv); }
+		logError(err);
+		stopSpinner();
+		showError("Adding new passkey failed.");
 	}
 }
 
@@ -351,34 +392,42 @@ async function resetAccount() {
 	});
 
 	if (confirmResult.isConfirmed) {
-		let { passkeyUsername: username, passkeyDisplayName: displayName, } = (await promptAddPasskey() || {});
+		let { passkeyUsername: username, passkeyDisplayName: displayName, } = (
+			(await promptAddPasskey()) || {}
+		);
 
-		if (username != null && displayName != null) {
-			try {
-				startSpinner();
-				let key = await getLockKey({
-					localIdentity: currentAccountID,
-					resetLockKey: true,
-					username,
-					displayName,
-				});
-				if (!localAccountIDs.includes(key.localIdentity)) {
-					throw new Error("No account found for selected passkey");
-				}
-				if (accountDataEl.value != "") {
-					lockAccountData(currentAccountID,key,accountDataEl.value);
-				}
-				else {
-					storeAccountData(currentAccountID,"");
-				}
-				stopSpinner();
-				showToast("Account lock-key reset (and previous passkeys discarded).");
+		if (!(username != null && displayName != null)) {
+			return;
+		}
+
+		let { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
+		try {
+			startSpinner();
+			let key = await getLockKey({
+				localIdentity: currentAccountID,
+				resetLockKey: true,
+				username,
+				displayName,
+				signal,
+			});
+			if (intv != null) { clearTimeout(intv); }
+			if (!localAccountIDs.includes(key.localIdentity)) {
+				throw new Error("No account found for selected passkey");
 			}
-			catch (err) {
-				logError(err);
-				stopSpinner();
-				showError("Resetting account failed.");
+			if (accountDataEl.value != "") {
+				lockAccountData(currentAccountID,key,accountDataEl.value);
 			}
+			else {
+				storeAccountData(currentAccountID,"");
+			}
+			stopSpinner();
+			showToast("Account lock-key reset (and previous passkeys discarded).");
+		}
+		catch (err) {
+			if (intv != null) { clearTimeout(intv); }
+			logError(err);
+			stopSpinner();
+			showError("Resetting account failed.");
 		}
 	}
 }
@@ -393,9 +442,14 @@ async function lockAccount() {
 }
 
 async function saveData() {
+	var { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
 	try {
 		startSpinner();
-		let key = await getLockKey({ localIdentity: currentAccountID, });
+		let key = await getLockKey({
+			localIdentity: currentAccountID,
+			signal,
+		});
+		if (intv != null) { clearTimeout(intv); }
 		if (accountDataEl.value != "") {
 			lockAccountData(currentAccountID,key,accountDataEl.value);
 		}
@@ -407,6 +461,7 @@ async function saveData() {
 		showToast("Data encrypted and saved.");
 	}
 	catch (err) {
+		if (intv != null) { clearTimeout(intv); }
 		logError(err);
 		stopSpinner();
 		showError("Saving (encrypted!) data to account failed.");
@@ -475,4 +530,12 @@ function showToast(toastMsg) {
 			popup: "toast-popup",
 		},
 	});
+}
+
+function createTimeoutToken(seconds) {
+	if (seconds > 0) {
+		let ac = new AbortController();
+		let intv = setTimeout(() => ac.abort("Timeout!"),seconds * 1000);
+		return { signal: ac.signal, intv, };
+	}
 }

@@ -82,13 +82,14 @@ function listLocalIdentities() {
 }
 
 function getCachedLockKey(localID) {
+	var now = Date.now();
 	if (
 		// lock-key currently in cache?
 		(localID in lockKeyCache) &&
 
 		// ... and not expired yet?
 		lockKeyCache[localID].timestamp >= (
-			Date.now() - MAX_LOCK_KEY_CACHE_LIFETIME
+			now - Math.min(MAX_LOCK_KEY_CACHE_LIFETIME,now)
 		)
 	) {
 		// discard cache-internal timestamp field
