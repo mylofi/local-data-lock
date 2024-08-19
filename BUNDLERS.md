@@ -8,13 +8,13 @@ As such, this project provides plugins for Astro, Vite, and Webpack, to take car
 
 The plugins for Astro, Vite, and Webpack are included in the `bundler-plugins/` directory. They should handle all necessary steps to load the dependencies.
 
-**Note:** You should not need to manually copy any files out of the `dist/bundlers/` directory, as the plugins access the `local-data-lock` dependency (in `node_modules`) directly to pull the files needed. But for reference, the files these plugins access are:
+**Note:** You should not need to manually copy any files, as the plugins access the dependencies (in `node_modules`) directly to pull the files needed. But for reference, the files these plugins access are:
 
-* `dist/bundlers/ldl.mjs`
+* `node_modules/@lo-fi/local-data-lock/dist/bundlers/ldl.mjs`
 
     ESM library module that's suitable for bundling and `import`ing into your web app.
 
-    **Note:** this is *not* the same as `dist/auto/ldl.js`, which is only intended [for web application projects WITHOUT a bundler](NON-BUNDLERS.md)
+    **Note:** this is *not* the same as `node_modules/@lo-fi/local-data-lock/dist/auto/ldl.js`, which is only intended [for web application projects WITHOUT a bundler](NON-BUNDLERS.md)
 
 * `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc.mjs`
 
@@ -94,7 +94,7 @@ export default defineConfig({
 
 This plugin works for the `vite dev` (dev-server), `vite preview` (also dev-server), and `vite build` modes. In all cases, it copies the `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the `public/` directory of your project root. It also injects a `<script src="/walc-external-bundle.js"></script>` tag into the markup of the `index.html` file that Vite produces for your app.
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Vite project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/vite.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Vite project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `node_modules/@lo-fi/local-data-lock/bundler-plugins/vite.mjs` plugin and make necessary changes.
 
 #### Top-level `await`
 

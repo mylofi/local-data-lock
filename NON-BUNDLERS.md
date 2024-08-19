@@ -46,4 +46,6 @@ Now, you'll be able to `import` the library in your app in a friendly/readable w
 import { getLockKey, lockData, unlockData } from "local-data-lock";
 ```
 
-**Note:** If you omit the above `"local-data-lock"` import-map entry, you can still `import` **local-data-lock** by specifying the proper path to `ldl.js` (as shown above). However, the entry above for `"@lo-fi/webauthn-local-client"` is more required. Alternatively, you'll have to manually edit the `ldl.js` file to change its `import` specifier from `"@lo-fi/webauthn-local-client"` to the proper path to `walc.js`.
+**Note:** If you omit the above `"local-data-lock"` import-map entry, you can still `import` **local-data-lock** by specifying the proper path to `ldl.js` (as shown above). However, the entry above for `"@lo-fi/webauthn-local-client"` is more required. Alternatively, you'll have to make the following manual edits:
+
+* edit the `ldl.js` file to change its `import` specifier for `"@lo-fi/webauthn-local-client"` to the proper path to `walc.js`.

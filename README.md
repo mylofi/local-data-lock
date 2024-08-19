@@ -25,13 +25,13 @@ await unlockData(encData,lockKey);
 
 This library can securely lock (encrypt) data in the local client, with no servers needed. The encrypted data *might also be* stored locally on the client device; for this purpose, please strongly consider using the [**Local Vault** library](https://github.com/mylofi/local-vault).
 
-However, the encrypted data (by default, represented as a base64 encoded string) might be transmitted and stored elsewhere, such as on an app's servers. The cryptographic keypair may be used for digital signatures to verify secure data transmission.
+However, the encrypted data (by default, represented as a base64 encoded string) might be transmitted and stored elsewhere, such as on an app's servers. The cryptographic keypair may also be used for digital signatures to verify secure data transmission.
 
 This cryptographic keypair is protected locally on the user's device in a biometric passkey; the user can easily unlock (decrypt) their data, or verify a received data transmission from their other device, by presenting a biometric factor to retrieve the keypair.
 
 ### How does it work?
 
-The direct dependency of this library is [**WebAuthn-Local-Client**](https://github.com/mylofi/webauthn-local-client), which utilizes the browser's [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) for managing biometric passkeys entirely in the local client (zero servers).
+The main direct dependency of this library is [**WebAuthn-Local-Client**](https://github.com/mylofi/webauthn-local-client), which utilizes the browser's [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) for managing biometric passkeys entirely in the local client (zero servers).
 
 The cryptographic keypair the library generates, is attached securely to a passkey (via its `userHandle` field), which is protected by the authenticator/device. The library also stores meta-data entries for these passkeys in the device's [`LocalStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
 
