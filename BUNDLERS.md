@@ -98,7 +98,7 @@ This plugin works for the `vite dev` (dev-server), `vite preview` (also dev-serv
 
 #### Top-level `await`
 
-This library's main dependency (**Webauthn-Local-Client**) uses ["top-level `await`"](https://github.com/tc39/proposal-top-level-await), a feature added to JS in ES2022. The current default target for Vite seems to be browsers older than this, so the above config explicitly sets the *targets* to `"es2022"`.
+This library's main dependency (**WebAuthn-Local-Client**) uses ["top-level `await`"](https://github.com/tc39/proposal-top-level-await), a feature added to JS in ES2022. The current default target for Vite seems to be browsers older than this, so the above config explicitly sets the *targets* to `"es2022"`.
 
 You may experience issues where your tooling/configuration either ignores this setting, or otherwise breaks with it set. This may variously result in seeing an error about the top-level `await`s in this library being incompatible with the built-target, or an error about `await` needing to only be in `async function`s or the top-level of a module (which it is!).
 

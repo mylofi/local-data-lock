@@ -3,7 +3,7 @@
 [![npm Module](https://badge.fury.io/js/@lo-fi%2Flocal-data-lock.svg)](https://www.npmjs.org/package/@lo-fi/local-data-lock)
 [![License](https://img.shields.io/badge/license-MIT-a1356a)](LICENSE.txt)
 
-**Local Data Lock** provides a simple utility interface for encrypting and decrypting local-first application data using a keypair stored and protected by [Webauthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys), via the [**Webauthn Local Client** library](https://github.com/mylofi/webauthn-local-client) -- no servers required!
+**Local Data Lock** provides a simple utility interface for encrypting and decrypting local-first application data using a keypair stored and protected by [WebAuthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys), via the [**WebAuthn Local Client** library](https://github.com/mylofi/webauthn-local-client) -- no servers required!
 
 ```js
 var lockKey = await getLockKey({ .. });
