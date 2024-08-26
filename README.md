@@ -45,7 +45,7 @@ Your application accesses the cryptographic keypair via `getLockKey()`, and may 
 
 If the design is *too convenient* (e.g., once-forever logins), it's likely to be insecure (and the user may not realize it!). If the design is *too secure*, it's likely to have so much UX friction that users won't use it (or your app).
 
-To assist in making these difficult tradeoffs, **Local Data Lock** internally caches the cryptographic keypair after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); in such a setup, the user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted, from 0ms upward, using the `setMaxLockKeyCacheLifetime()` method.
+To assist in making these difficult tradeoffs, **Local Data Lock** internally caches the cryptographic keypair after a successful passkey authentication, and keeps it in memory (assuming no page refresh) for a period of time (by default, 30 minutes); in such a setup, the user won't need to re-authenticate their passkey more often than once per 30 minutes. This default time threshold can also be adjusted, from 0ms upward, [using `configure({ cacheLifetime: .. })`](#change-lock-key-cache-lifetime).
 
 You are strongly encouraged **NOT** to persist the encryption/decryption key, and to instead rely on this time-based caching mechanism.
 
@@ -148,7 +148,7 @@ If the `currentAccountID` (as shown above) is available, it should be used in su
 var key = await getLockKey({ localIdentitity: currentAccountID, });
 ```
 
-If you don't have (or the application loses) an account ID, call `listLocalIdentities()` to receive an array of all registed local account IDs.
+If you don't have (or the application loses) an account ID, call `listLocalIdentities()` (async) to receive an array of all registed local account IDs.
 
 Alternatively, `getLockKey()` can be called WITHOUT either `localIdentity` or `addNewPasskey` options, in which case the device will prompt the user to select a discoverable passkey (if supported). If the user chooses a passkey that matches one of the registered local accounts, the keypair (and its `localIdentity` account ID property) will be returned.
 
@@ -162,15 +162,15 @@ To prompt for adding a new passkey to an existing local account:
 /*var key =*/ await getLockKey({ localIdentitity: currentAccountID, addNewPasskey: true, });
 ```
 
-### Change passkey cache lifetime
+### Change lock-key cache lifetime
 
-To change the default (30 minutes) lifetime for caching passkey authentication (encryption/decryption keypair):
+To change the default (30 minutes) lifetime for caching the encryption/decryption keypair (extracted from passkey authentication):
 
 ```js
-import { setMaxLockKeyCacheLifetime } from "..";
+import { configure } from "..";
 
 // change default lifetime to 5 minutes
-setMaxLockKeyCacheLifetime(5 * 60 * 1000);
+configure({ cacheLifetime: 5 * 60 * 1000 });
 ```
 
 ### Clear the passkey/keypair cache
@@ -196,7 +196,7 @@ To remove a local account (from device local storage), thereby discarding associ
 ```js
 import { removeLocalAccount } from "..";
 
-removeLocalAccount(currentAccountID);
+await removeLocalAccount(currentAccountID);
 ```
 
 ### Configuring Passkeys
@@ -374,16 +374,28 @@ By default, **Local Data Lock** will store its [passkey account metadata](#how-d
 However, you may wish to configure to use one of the other client storage mechanisms:
 
 ```js
-import { configureStorage } from "..";
+import { configure } from "..";
 
 // override default storage to Local-Storage
 // (instead of IndexedDB)
-configureStorage("local-storage");
+configure({ accountStorage: "local-storage" });
 ```
 
-**WARNING:** If overriding the default from IndexedDB (as `"idb"`), make sure to call this function just once (per page load), *before* any other calls to **Local Data Lock** methods, to prevent any confusion of where the passkey metadata is held.
+**WARNING:** If you need to configure `accountStorage` as shown, make sure to do so just once (per page load), *before* any other calls to any other **Local Data Lock** methods, to prevent any confusion of where the passkey account metadata is held.
 
 The corresponding (or default) **Client Storage** adapter will be loaded dynamically (i.e., from `"@lo-fi/client-storage/*"`), at the first need for **Local Data Lock** to access or update its passkey account metadata storage.
+
+### Manually specifying custom storage adapter
+
+If you want to use a custom storage adapter -- one *not* [provided by **Client Storage**](https://github.com/mylofi/client-storage?tab=readme-ov-file#client-side-storage-adapters) -- pass the storage adapter instance directly to `configure()`:
+
+```js
+import { configure } from "..";
+
+configure({ accountStorage: customStorageAdapter });
+```
+
+**NOTE:** The adapter instance (`customStorageAdapter`) *must* conform to the [storage-adapter API as defined by **Client Storage**](https://github.com/mylofi/client-storage?tab=readme-ov-file#client-storage-api).
 
 ## WebAuthn-Local-Client Utilities
 

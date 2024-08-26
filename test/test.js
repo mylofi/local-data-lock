@@ -5,22 +5,23 @@ import {
 	getLockKey,
 	lockData,
 	unlockData,
-	setMaxLockKeyCacheLifetime,
+	configure,
 	resetAbortReason,
-	configureStorage,
 }
 // note: this module specifier comes from the import-map
 //    in index.html; swap "src" for "dist" here to test
 //    against the dist/* files
 from "local-data-lock/src";
-import * as IDBStore from "@lo-fi/client-storage/idb";
+import SSStore from "@lo-fi/client-storage/session-storage";
 
 // simple helper util for showing a spinner
 // (during slower passkey operations)
 import { startSpinner, stopSpinner, } from "./spinner.js";
 
 
-configureStorage("session-storage");
+configure({
+	accountStorage: "session-storage",
+});
 
 
 // ***********************
@@ -141,7 +142,7 @@ async function setKeepAlive() {
 	var keepAlive = Math.max(1,Number(passkeyKeepAliveEl.value != null ? passkeyKeepAliveEl.value : 30));
 	passkeyKeepAliveEl.value = keepAlive;
 
-	setMaxLockKeyCacheLifetime(keepAlive * 60 * 1000);
+	configure({ cacheLifetime: keepAlive * 60 * 1000, });
 	showToast(`Passkey Keep-Alive set to ${keepAlive} minute(s)`);
 }
 
@@ -312,7 +313,7 @@ async function resetAllAccounts() {
 	if (confirmResult.isConfirmed) {
 		for (let accountID of localAccountIDs) {
 			await removeLocalAccount(accountID);
-			await IDBStore.remove(`account-data-${accountID}`);
+			await SSStore.remove(`account-data-${accountID}`);
 		}
 		localAccountIDs.length = 0;
 		updateElements();
@@ -494,14 +495,14 @@ async function lockAccountData(accountID,key,data) {
 }
 
 async function loadAccountData(accountID) {
-	var data = await IDBStore.get(`account-data-${accountID}`);
+	var data = await SSStore.get(`account-data-${accountID}`);
 	if (typeof data == "string") {
 		return data;
 	}
 }
 
 async function storeAccountData(accountID,data) {
-	await IDBStore.set(`account-data-${accountID}`,data);
+	await SSStore.set(`account-data-${accountID}`,data);
 }
 
 function logError(err,returnLog = false) {

@@ -19,7 +19,7 @@ import {
 
 const CURRENT_LOCK_KEY_FORMAT_VERSION = 1;
 const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES;
-var MAX_LOCK_KEY_CACHE_LIFETIME = setMaxLockKeyCacheLifetime();
+var LOCK_KEY_CACHE_LIFETIME = setLockKeyCacheLifetime(30 * 60 * 1000); // 30 min (default)
 var DEFAULT_STORAGE_TYPE = "idb";
 var store = null;
 var localIdentities = null;
@@ -50,8 +50,7 @@ export {
 	deriveLockKey,
 	lockData,
 	unlockData,
-	setMaxLockKeyCacheLifetime,
-	configureStorage,
+	configure,
 };
 var publicAPI = {
 	// re-export WebAuthn-Local-Client helper utilities:
@@ -73,8 +72,7 @@ var publicAPI = {
 	deriveLockKey,
 	lockData,
 	unlockData,
-	setMaxLockKeyCacheLifetime,
-	configureStorage,
+	configure,
 };
 export default publicAPI;
 
@@ -94,7 +92,7 @@ function getCachedLockKey(localID) {
 
 		// ... and not expired yet?
 		lockKeyCache[localID].timestamp >= (
-			now - Math.min(MAX_LOCK_KEY_CACHE_LIFETIME,now)
+			now - Math.min(LOCK_KEY_CACHE_LIFETIME,now)
 		)
 	) {
 		// discard cache-internal timestamp field
@@ -658,10 +656,53 @@ async function storeLocalIdentities() {
 	}
 }
 
-function setMaxLockKeyCacheLifetime(
-	ms = 30 * 60 * 1000			// 30 min (default)
-) {
-	return (MAX_LOCK_KEY_CACHE_LIFETIME = Math.max(0,Number(ms) || 0));
+function setLockKeyCacheLifetime(ms) {
+	return (LOCK_KEY_CACHE_LIFETIME = Math.max(0,Number(ms) || 0));
+}
+
+function configureStorage(storageOpt) {
+	if (
+		// known storage adapter type?
+		[ "idb", "local-storage", "session-storage", "cookie", "opfs", ]
+			.includes(storageOpt)
+	) {
+		DEFAULT_STORAGE_TYPE = storageOpt;
+
+		// ensure next access pulls fresh from storage
+		localIdentities = store = null;
+	}
+	else if (
+		// raw storage adapter passed in directly?
+		typeof storageOpt == "object" &&
+
+		// has conforming API?
+		typeof storageOpt.storageType == "string" &&
+
+		[ "has", "get", "set", "remove", "keys", "entries", ].every(method => (
+			typeof storageOpt[method] == "function"
+		))
+	) {
+		store = storageOpt;
+		DEFAULT_STORAGE_TYPE = storageOpt.storageType;
+
+		// ensure next access pulls fresh from storage
+		localIdentities = null;
+	}
+	else {
+		throw new Error(`Unrecognized storage type ('${storageType}')`);
+	}
+}
+
+function configure({
+	accountStorage,
+	cacheLifetime,
+} = {}) {
+	if (accountStorage != null) {
+		configureStorage(accountStorage);
+	}
+	if (cacheLifetime != null) {
+		setLockKeyCacheLifetime(cacheLifetime)
+	}
 }
 
 function isByteArray(val) {
@@ -685,18 +726,18 @@ function computePasskeyEntryHash(passkeyEntry) {
 	})));
 }
 
-function configureStorage(storageType) {
-	if ([ "idb", "local-storage", "session-storage", "cookie", "opfs", ].includes(storageType)) {
-		DEFAULT_STORAGE_TYPE = storageType;
-	}
-	else {
-		throw new Error(`Unrecognized storage type ('${storageType}')`);
-	}
-}
-
 async function checkStorage() {
 	if (store == null) {
-		store = await import(`@lo-fi/client-storage/${DEFAULT_STORAGE_TYPE}`);
+		if (
+			[ "idb", "local-storage", "session-storage", "cookie", "opfs", ]
+			.includes(DEFAULT_STORAGE_TYPE)
+		) {
+			store = await import(`@lo-fi/client-storage/${DEFAULT_STORAGE_TYPE}`);
+		}
+		// note: shouldn't ever get here
+		else {
+			throw new Error(`Unrecognized storage type ('${DEFAULT_STORAGE_TYPE}')`);
+		}
 	}
 	if (store != null && localIdentities == null) {
 		localIdentities = await loadLocalIdentities();
