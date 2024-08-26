@@ -1,7 +1,7 @@
 {
 	"name": "@lo-fi/local-data-lock",
 	"description": "Protect local-first app data with encryption/decryption key secured in WebAuthn (biometric) passkeys",
-	"version": "0.11.2",
+	"version": "0.12.0",
 	"exports": {
 		".": "./dist/bundlers/ldl.mjs",
 		"./bundlers/astro": "./bundler-plugins/astro.mjs",
@@ -21,6 +21,7 @@
 		"prepublishOnly": "npm run build:all"
 	},
 	"dependencies": {
+		"@lo-fi/client-storage": "~0.9.0",
 		"@lo-fi/webauthn-local-client": "~0.999.7"
 	},
 	"devDependencies": {

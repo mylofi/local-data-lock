@@ -31,11 +31,13 @@ This cryptographic keypair is protected locally on the user's device in a biomet
 
 ### How does it work?
 
-The main direct dependency of this library is [**WebAuthn-Local-Client**](https://github.com/mylofi/webauthn-local-client), which utilizes the browser's [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) for managing biometric passkeys entirely in the local client (zero servers).
+One direct dependency of this library is [**WebAuthn-Local-Client**](https://github.com/mylofi/webauthn-local-client), which utilizes the browser's [WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) for managing biometric passkeys entirely in the local client (zero servers).
 
-The cryptographic keypair the library generates, is attached securely to a passkey (via its `userHandle` field), which is protected by the authenticator/device. The library also stores meta-data entries for these passkeys in the device's [`LocalStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
+The cryptographic keypair the library generates, is attached securely to a passkey, which is protected by the authenticator/device. The library also stores meta-data entries for these passkeys -- specifically, the public-key info for the passkey itself, which is necessary for **verifying** subsequent passkey authentication responses.
 
 **NOTE:** This public-key for a passkey is *NOT* in any way related to the crytographic keypair, which **Local Data Lock** does not persist anywhere on the device (only kept in memory). It's *only* used for authentication verification -- protecting against MitM attacks against the authenticator. Verification defaults *on*, but can be skipped by passing `verify: false` as an option to the `getLockKey()` method.
+
+The client-side storage location (for passkey account metadata) that **Local Data Lock** uses, is [configurable (defaults to IndexedDB)](#configuring-client-side-storage).
 
 ### Security vs Convenience
 
@@ -364,6 +366,24 @@ key === existingLockKey;        // true
 ```
 
 **Warning:** You should generally let **Local Data Lock** internally generate and manage the lock-keys on local-accounts, and should not store (or transmit) these lock-keys in a way that degrades the security promises of this library. Be very careful if you are using the library in a way that you need to use `useLockKey`, and make sure it's absolutely necessary.
+
+## Configuring client-side storage
+
+By default, **Local Data Lock** will store its [passkey account metadata](#how-does-it-work) in [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API), with the **Client Storage** library's `idb` storage adapter.
+
+However, you may wish to configure to use one of the other client storage mechanisms:
+
+```js
+import { configureStorage } from "..";
+
+// override default storage to Local-Storage
+// (instead of IndexedDB)
+configureStorage("local-storage");
+```
+
+**WARNING:** If overriding the default from IndexedDB (as `"idb"`), make sure to call this function just once (per page load), *before* any other calls to **Local Data Lock** methods, to prevent any confusion of where the passkey metadata is held.
+
+The corresponding (or default) **Client Storage** adapter will be loaded dynamically (i.e., from `"@lo-fi/client-storage/*"`), at the first need for **Local Data Lock** to access or update its passkey account metadata storage.
 
 ## WebAuthn-Local-Client Utilities
 

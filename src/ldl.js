@@ -20,7 +20,9 @@ import {
 const CURRENT_LOCK_KEY_FORMAT_VERSION = 1;
 const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES;
 var MAX_LOCK_KEY_CACHE_LIFETIME = setMaxLockKeyCacheLifetime();
-var localIdentities = loadLocalIdentities();
+var DEFAULT_STORAGE_TYPE = "idb";
+var store = null;
+var localIdentities = null;
 var lockKeyCache = {};
 var abortToken = null;
 var externalSignalCache = new WeakMap();
@@ -49,6 +51,7 @@ export {
 	lockData,
 	unlockData,
 	setMaxLockKeyCacheLifetime,
+	configureStorage,
 };
 var publicAPI = {
 	// re-export WebAuthn-Local-Client helper utilities:
@@ -71,13 +74,15 @@ var publicAPI = {
 	lockData,
 	unlockData,
 	setMaxLockKeyCacheLifetime,
+	configureStorage,
 };
 export default publicAPI;
 
 
 // ***********************
 
-function listLocalIdentities() {
+async function listLocalIdentities() {
+	await checkStorage();
 	return Object.keys(localIdentities);
 }
 
@@ -119,10 +124,11 @@ function clearLockKeyCache(localID) {
 	}
 }
 
-function removeLocalAccount(localID) {
+async function removeLocalAccount(localID) {
+	await checkStorage();
 	delete lockKeyCache[localID];
 	delete localIdentities[localID];
-	storeLocalIdentities();
+	return storeLocalIdentities();
 }
 
 async function getLockKey(
@@ -140,6 +146,7 @@ async function getLockKey(
 	} = {},
 ) {
 	// local-identity already registered?
+	await checkStorage();
 	var identityRecord = localID != null ? localIdentities[localID] : null;
 	if (identityRecord != null) {
 		// lock-key already in cache?
@@ -160,7 +167,7 @@ async function getLockKey(
 						...identityRecord.passkeys,
 						...record.passkeys
 					];
-					storeLocalIdentities();
+					await storeLocalIdentities();
 				}
 			}
 
@@ -200,7 +207,7 @@ async function getLockKey(
 				}
 				// registration succeeded, lock-key returned?
 				else if (lockKey != null) {
-					storeLocalIdentities();
+					await storeLocalIdentities();
 					cacheLockKey(localID,lockKey);
 
 					return Object.freeze({
@@ -333,7 +340,7 @@ async function getLockKey(
 		if (record != null && lockKey != null) {
 			localIdentities[localID] = record;
 			cacheLockKey(localID,lockKey);
-			storeLocalIdentities();
+			await storeLocalIdentities();
 
 			return Object.freeze({
 				...lockKey,
@@ -584,13 +591,11 @@ function unlockData(
 	}
 }
 
-function loadLocalIdentities() {
+async function loadLocalIdentities() {
 	return (
 		Object.fromEntries(
 			Object.entries(
-				JSON.parse(
-					window.localStorage.getItem("local-identities") || null
-				) || {}
+				(await store.get("local-identities")) || {}
 			)
 			// only accept well-formed local-identity entries
 			.filter(([ localID, entry, ]) => (
@@ -628,7 +633,9 @@ function loadLocalIdentities() {
 	);
 }
 
-function storeLocalIdentities() {
+async function storeLocalIdentities() {
+	await checkStorage();
+
 	var identities = Object.fromEntries(
 		Object.entries(localIdentities)
 		.map(([ localID, entry, ]) => ([
@@ -644,10 +651,10 @@ function storeLocalIdentities() {
 	);
 
 	if (Object.keys(identities).length > 0) {
-		window.localStorage.setItem("local-identities",JSON.stringify(identities));
+		await store.set("local-identities",identities);
 	}
 	else {
-		window.localStorage.removeItem("local-identities");
+		await store.remove("local-identities");
 	}
 }
 
@@ -676,4 +683,22 @@ function computePasskeyEntryHash(passkeyEntry) {
 		...passkey,
 		publicKey: packPublicKeyJSON(passkey.publicKey),
 	})));
+}
+
+function configureStorage(storageType) {
+	if ([ "idb", "local-storage", "session-storage", "cookie", "opfs", ].includes(storageType)) {
+		DEFAULT_STORAGE_TYPE = storageType;
+	}
+	else {
+		throw new Error(`Unrecognized storage type ('${storageType}')`);
+	}
+}
+
+async function checkStorage() {
+	if (store == null) {
+		store = await import(`@lo-fi/client-storage/${DEFAULT_STORAGE_TYPE}`);
+	}
+	if (store != null && localIdentities == null) {
+		localIdentities = await loadLocalIdentities();
+	}
 }

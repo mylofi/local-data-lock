@@ -18,12 +18,14 @@ const NODE_MODULES_DIR = path.join(PKG_ROOT_DIR,"node_modules");
 const LOFI_WALC_DIST_DIR = path.join(NODE_MODULES_DIR,"@lo-fi","webauthn-local-client","dist");
 const LOFI_WALC_DIST_AUTO_DIR = path.join(LOFI_WALC_DIST_DIR,"auto");
 const LOFI_WALC_DIST_BUNDLERS_DIR = path.join(LOFI_WALC_DIST_DIR,"bundlers");
+const LOFI_CS_DIST_DIR = path.join(NODE_MODULES_DIR,"@lo-fi","client-storage","dist");
 
 const DIST_DIR = path.join(PKG_ROOT_DIR,"dist");
 const DIST_AUTO_DIR = path.join(DIST_DIR,"auto");
 const DIST_AUTO_EXTERNAL_DIR = path.join(DIST_AUTO_DIR,"external");
 const DIST_AUTO_EXTERNAL_LOFI_DIR = path.join(DIST_AUTO_EXTERNAL_DIR,"@lo-fi");
 const DIST_AUTO_EXTERNAL_LOFI_WALC_DIR = path.join(DIST_AUTO_EXTERNAL_LOFI_DIR,"webauthn-local-client");
+const DIST_AUTO_EXTERNAL_LOFI_CS_DIR = path.join(DIST_AUTO_EXTERNAL_LOFI_DIR,"client-storage");
 const DIST_BUNDLERS_DIR = path.join(DIST_DIR,"bundlers");
 
 
@@ -42,6 +44,7 @@ async function main() {
 			DIST_AUTO_EXTERNAL_DIR,
 			DIST_AUTO_EXTERNAL_LOFI_DIR,
 			DIST_AUTO_EXTERNAL_LOFI_WALC_DIR,
+			DIST_AUTO_EXTERNAL_LOFI_CS_DIR,
 			DIST_BUNDLERS_DIR,
 		]) {
 		if (!(await safeMkdir(dir))) {
@@ -89,6 +92,13 @@ async function main() {
 		recursiveReadDir(LOFI_WALC_DIST_AUTO_DIR),
 		LOFI_WALC_DIST_AUTO_DIR,
 		DIST_AUTO_EXTERNAL_LOFI_WALC_DIR,
+		// simple copy as-is
+		(contents,outputPath) => ({ contents, outputPath, })
+	);
+	await buildFiles(
+		recursiveReadDir(LOFI_CS_DIST_DIR),
+		LOFI_CS_DIST_DIR,
+		DIST_AUTO_EXTERNAL_LOFI_CS_DIR,
 		// simple copy as-is
 		(contents,outputPath) => ({ contents, outputPath, })
 	);

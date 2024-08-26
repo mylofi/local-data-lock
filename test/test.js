@@ -7,15 +7,20 @@ import {
 	unlockData,
 	setMaxLockKeyCacheLifetime,
 	resetAbortReason,
+	configureStorage,
 }
 // note: this module specifier comes from the import-map
 //    in index.html; swap "src" for "dist" here to test
 //    against the dist/* files
 from "local-data-lock/src";
+import * as IDBStore from "@lo-fi/client-storage/idb";
 
 // simple helper util for showing a spinner
 // (during slower passkey operations)
 import { startSpinner, stopSpinner, } from "./spinner.js";
+
+
+configureStorage("session-storage");
 
 
 // ***********************
@@ -36,7 +41,7 @@ var accountDataEl;
 var saveDataBtn;
 
 var currentAccountID;
-var localAccountIDs = listLocalIdentities();
+var localAccountIDs = await listLocalIdentities();
 var passkeyTimeout = 0;
 
 if (document.readyState == "loading") {
@@ -247,12 +252,12 @@ async function registerAccount() {
 			signal,
 		});
 		if (intv != null) { clearTimeout(intv); }
-		localAccountIDs = listLocalIdentities();
+		localAccountIDs = await listLocalIdentities();
 		if (!localAccountIDs.includes(key.localIdentity)) {
 			throw new Error("No account found for selected passkey");
 		}
 		selectAccountEl.value = currentAccountID = key.localIdentity;
-		unlockAccountData(currentAccountID,key);
+		await unlockAccountData(currentAccountID,key);
 		updateElements();
 		changeSelectedAccount();
 		stopSpinner();
@@ -276,7 +281,7 @@ async function detectAccount() {
 			throw new Error("No account matching selected passkey");
 		}
 		selectAccountEl.value = currentAccountID = key.localIdentity;
-		unlockAccountData(currentAccountID,key);
+		await unlockAccountData(currentAccountID,key);
 		updateElements();
 		changeSelectedAccount();
 		stopSpinner();
@@ -306,8 +311,8 @@ async function resetAllAccounts() {
 
 	if (confirmResult.isConfirmed) {
 		for (let accountID of localAccountIDs) {
-			removeLocalAccount(accountID);
-			window.localStorage.removeItem(`account-data-${accountID}`);
+			await removeLocalAccount(accountID);
+			await IDBStore.remove(`account-data-${accountID}`);
 		}
 		localAccountIDs.length = 0;
 		updateElements();
@@ -332,7 +337,7 @@ async function unlockAccount() {
 			throw new Error("No account found for selected passkey");
 		}
 		selectAccountEl.value = currentAccountID = key.localIdentity;
-		unlockAccountData(currentAccountID,key);
+		await unlockAccountData(currentAccountID,key);
 		updateElements();
 		changeSelectedAccount();
 		stopSpinner();
@@ -415,10 +420,10 @@ async function resetAccount() {
 				throw new Error("No account found for selected passkey");
 			}
 			if (accountDataEl.value != "") {
-				lockAccountData(currentAccountID,key,accountDataEl.value);
+				await lockAccountData(currentAccountID,key,accountDataEl.value);
 			}
 			else {
-				storeAccountData(currentAccountID,"");
+				await storeAccountData(currentAccountID,"");
 			}
 			stopSpinner();
 			showToast("Account lock-key reset (and previous passkeys discarded).");
@@ -451,10 +456,10 @@ async function saveData() {
 		});
 		if (intv != null) { clearTimeout(intv); }
 		if (accountDataEl.value != "") {
-			lockAccountData(currentAccountID,key,accountDataEl.value);
+			await lockAccountData(currentAccountID,key,accountDataEl.value);
 		}
 		else {
-			storeAccountData(currentAccountID,"");
+			await storeAccountData(currentAccountID,"");
 		}
 		saveDataBtn.disabled = true;
 		stopSpinner();
@@ -468,8 +473,8 @@ async function saveData() {
 	}
 }
 
-function unlockAccountData(accountID,key) {
-	var data = loadAccountData(accountID);
+async function unlockAccountData(accountID,key) {
+	var data = await loadAccountData(accountID);
 	if (typeof data == "string") {
 		if (data != "") {
 			let text = unlockData(data,key,{ parseJSON: false, });
@@ -484,19 +489,19 @@ function unlockAccountData(accountID,key) {
 	}
 }
 
-function lockAccountData(accountID,key,data) {
-	storeAccountData(accountID,lockData(data,key));
+async function lockAccountData(accountID,key,data) {
+	await storeAccountData(accountID,lockData(data,key));
 }
 
-function loadAccountData(accountID) {
-	var data = window.localStorage.getItem(`account-data-${accountID}`);
+async function loadAccountData(accountID) {
+	var data = await IDBStore.get(`account-data-${accountID}`);
 	if (typeof data == "string") {
 		return data;
 	}
 }
 
-function storeAccountData(accountID,data) {
-	window.localStorage.setItem(`account-data-${accountID}`,data);
+async function storeAccountData(accountID,data) {
+	await IDBStore.set(`account-data-${accountID}`,data);
 }
 
 function logError(err,returnLog = false) {
