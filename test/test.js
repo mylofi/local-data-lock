@@ -5,6 +5,8 @@ import {
 	getLockKey,
 	lockData,
 	unlockData,
+	signData,
+	verifySignature,
 	configure,
 	resetAbortReason,
 }
@@ -40,6 +42,7 @@ var resetAccountBtn;
 var lockAccountBtn;
 var accountDataEl;
 var saveDataBtn;
+var signVerifyBtn;
 
 var currentAccountID;
 var localAccountIDs = await listLocalIdentities();
@@ -70,6 +73,7 @@ async function ready() {
 	lockAccountBtn = document.getElementById("lock-account-btn");
 	accountDataEl = document.getElementById("account-data");
 	saveDataBtn = document.getElementById("save-data-btn");
+	signVerifyBtn = document.getElementById("sign-verify-btn");
 
 	selectAccountEl.addEventListener("change",changeSelectedAccount,false);
 	accountDataEl.addEventListener("input",onChangeAccountData,false);
@@ -84,6 +88,7 @@ async function ready() {
 	resetAccountBtn.addEventListener("click",resetAccount,false);
 	lockAccountBtn.addEventListener("click",lockAccount,false);
 	saveDataBtn.addEventListener("click",saveData,false);
+	signVerifyBtn.addEventListener("click",signAndVerify,false);
 
 	updateElements();
 }
@@ -113,12 +118,14 @@ function updateElements() {
 		addPasskeyBtn.disabled = false;
 		resetAccountBtn.disabled = false;
 		lockAccountBtn.disabled = false;
+		signVerifyBtn.disabled = false;
 		accountDataEl.disabled = false;
 	}
 	else {
 		addPasskeyBtn.disabled = true;
 		resetAccountBtn.disabled = true;
 		lockAccountBtn.disabled = true;
+		signVerifyBtn.disabled = true;
 		accountDataEl.disabled = true;
 		accountDataEl.value = "";
 		selectAccountEl.selectedIndex = 0;
@@ -199,7 +206,7 @@ async function promptAddPasskey() {
 			passkeyUsernameEl = passkeyDisplayNameEl = null;
 		},
 
-		async preConfirm() {
+		preConfirm() {
 			var passkeyUsername = passkeyUsernameEl.value.trim();
 			var passkeyDisplayName = passkeyDisplayNameEl.value.trim();
 
@@ -471,6 +478,82 @@ async function saveData() {
 		logError(err);
 		stopSpinner();
 		showError("Saving (encrypted!) data to account failed.");
+	}
+}
+
+async function signAndVerify() {
+	var result = await Swal.fire({
+		title: "Enter some text to sign",
+		input: "text",
+		inputLabel: "Text",
+		inputValue: accountDataEl.value,
+		inputAttributes: {
+			autocapitalize: "off",
+		},
+		showConfirmButton: true,
+		confirmButtonText: "Sign",
+		confirmButtonColor: "darkslateblue",
+		showCancelButton: true,
+		cancelButtonColor: "darkslategray",
+		allowOutsideClick: true,
+		allowEscapeKey: true,
+
+		preConfirm(textToSign) {
+			if (!textToSign) {
+				Swal.showValidationMessage("Please enter text to sign.");
+				return false;
+			}
+			return textToSign;
+		},
+	});
+
+	if (result.isConfirmed) {
+		let { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
+		try {
+			startSpinner();
+			let key = await getLockKey({
+				localIdentity: currentAccountID,
+				signal,
+			});
+			if (intv != null) { clearTimeout(intv); }
+
+			let msg = {
+				text: result.value,
+				timestamp: Date.now(),
+			};
+			let signature = signData(msg,key);
+			let verified = verifySignature(msg,key,signature);
+
+			stopSpinner();
+			await Swal.fire({
+				title: "Signature & Verification",
+				html: `
+					<div style="text-align:left;">
+						<p style="white-space:nowrap;">
+							<code style="max-width:100%;overflow:auto;font-family:monospace;white-space:pre;"><pre>${
+								JSON.stringify(msg,null,"   ")
+							}</pre></code>
+						</p>
+						<p style="white-space:pre-line;">
+							Signature: <strong>${signature}</strong>
+						</p>
+						<h2>${verified ? "Verified!" : "Not verified"}</h2>
+					</div>
+				`,
+				showConfirmButton: true,
+				confirmButtonText: "OK",
+				confirmButtonColor: "darkslateblue",
+				showCancelButton: false,
+				allowOutsideClick: true,
+				allowEscapeKey: true,
+			});
+		}
+		catch (err) {
+			if (intv != null) { clearTimeout(intv); }
+			logError(err);
+			stopSpinner();
+			showError("Signing/verifying failed.");
+		}
 	}
 }
 

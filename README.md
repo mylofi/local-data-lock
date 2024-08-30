@@ -3,7 +3,7 @@
 [![npm Module](https://badge.fury.io/js/@lo-fi%2Flocal-data-lock.svg)](https://www.npmjs.org/package/@lo-fi/local-data-lock)
 [![License](https://img.shields.io/badge/license-MIT-a1356a)](LICENSE.txt)
 
-**Local Data Lock** provides a simple utility interface for encrypting and decrypting local-first application data using a keypair stored and protected by [WebAuthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys), via the [**WebAuthn Local Client** library](https://github.com/mylofi/webauthn-local-client) -- no servers required!
+**Local Data Lock** provides a simple utility interface for encrypting and decrypting (and producing digital signatures for) local-first application data using a keypair stored and protected by [WebAuthn](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) (biometric passkeys), via the [**WebAuthn Local Client** library](https://github.com/mylofi/webauthn-local-client) -- no servers required!
 
 ```js
 var lockKey = await getLockKey({ .. });
@@ -25,7 +25,7 @@ await unlockData(encData,lockKey);
 
 This library can securely lock (encrypt) data in the local client, with no servers needed. The encrypted data *might also be* stored locally on the client device; for this purpose, please strongly consider using the [**Local Vault** library](https://github.com/mylofi/local-vault).
 
-However, the encrypted data (by default, represented as a base64 encoded string) might be transmitted and stored elsewhere, such as on an app's servers. The cryptographic keypair may also be used for digital signatures to verify secure data transmission.
+However, the encrypted data (by default, represented as a base64 encoded string) might be transmitted and stored elsewhere, such as on an app's servers. The cryptographic keypair may also be used for digital signatures to verify secure data transmission, using the `signData()` and `verifySignature()` methods.
 
 This cryptographic keypair is protected locally on the user's device in a biometric passkey; the user can easily unlock (decrypt) their data, or verify a received data transmission from their other device, by presenting a biometric factor to retrieve the keypair.
 
@@ -282,6 +282,7 @@ var encDataBuffer = lockData(
     key,
     { outputFormat: "raw" }     // instead of "base64"
 );
+// Uint8Array[ .. ]
 ```
 
 ## Decrypt some data
@@ -315,6 +316,43 @@ var dataBuffer = unlockData(
     { outputFormat: "raw" }     // instead of "utf8" (or "utf-8")
 );
 ```
+
+## Signing data and verifying signatures
+
+In addition to encryption and decryption, lock-keys can be used for producing and verifying (detached) digital signatures.
+
+To sign a piece of data:
+
+```js
+import { signData } from "..";
+
+var signature = signData(someData,lockKey);       // "Zt83H.."
+```
+
+`someData` can be any string or a JSON-serializable object; any other primitive value will be treated as a string. `lockKey` only strictly requires a `privateKey` property (from a full lock-key value).
+
+The default representation in the return value will be a base64 encoded string (suitable for storing in LocalStorage, transmitting in JSON, etc). If you prefer the `Uint8Array` binary representation:
+
+```js
+var signature = signData(
+    someData,
+    key,
+    { outputFormat: "raw" }     // instead of "base64"
+);
+// Uint8Array[ .. ]
+```
+
+To verify a signature:
+
+```js
+import { verifySignature } from "..";
+
+verifySignature(someData,lockKey,signature);    // true (or false!)
+```
+
+Obviously, `someData` needs to hold the exact same data as was passed to `signData()` previously. `lockKey` only strictly requires a `publicKey` property (from a full lock-key value). `signature` may be a string (assumed as the base64 encoded representation) or the raw `Uint8Array` binary representation.
+
+The function returns `true` / `false` for verification -- or throws an exception if the data, key, or signature are malformed/invalid.
 
 ## Deriving an encryption/decryption key
 

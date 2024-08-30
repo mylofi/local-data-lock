@@ -50,6 +50,8 @@ export {
 	deriveLockKey,
 	lockData,
 	unlockData,
+	signData,
+	verifySignature,
 	configure,
 };
 var publicAPI = {
@@ -72,6 +74,8 @@ var publicAPI = {
 	deriveLockKey,
 	lockData,
 	unlockData,
+	signData,
+	verifySignature,
 	configure,
 };
 export default publicAPI;
@@ -518,32 +522,7 @@ function lockData(
 	} = {}
 ) {
 	try {
-		let dataBuffer = (
-			// null/undefined?
-			data == null ? null :
-
-			// raw array buffer?
-			data instanceof ArrayBuffer ? new Uint8Array(data) :
-
-			// already uint8 byte array?
-			isByteArray(data) ? data :
-
-			// encode text to uint8 buffer
-			fromUTF8String(
-				// JSON-compatible object (hopefully)?
-				typeof data == "object" ? JSON.stringify(data) :
-
-				// already a string?
-				typeof data == "string" ? data :
-
-				// some other value type that needs to be
-				// stringified
-				String(data)
-			)
-		);
-		if (data == null) {
-			throw new Error("Non-empty data required.");
-		}
+		let dataBuffer = dataToBuffer(data);
 		let encData = sodium.crypto_box_seal(dataBuffer,lockKey.encPK);
 		return (
 			[ "base64", "base-64", ].includes(outputFormat.toLowerCase()) ?
@@ -586,6 +565,53 @@ function unlockData(
 	}
 	catch (err) {
 		throw new Error("Data decryption failed.",{ cause: err, });
+	}
+}
+
+function signData(
+	data,
+	/*lockKey=*/{
+		privateKey,
+	} = {},
+	/*options=*/{
+		outputFormat = "base64",		// "base64", "raw"
+	} = {}
+) {
+	try {
+		let signatureBuffer = sodium.crypto_sign_detached(
+			dataToBuffer(data),
+			privateKey
+		);
+		return (
+			[ "base64", "base-64", ].includes(outputFormat.toLowerCase()) ?
+				toBase64String(signatureBuffer) :
+				signatureBuffer
+		);
+	}
+	catch (err) {
+		throw new Error("Data signature failed.",{ cause: err, });
+	}
+}
+
+function verifySignature(
+	data,
+	/*lockKey=*/{
+		publicKey,
+	} = {},
+	signature
+) {
+	try {
+		return sodium.crypto_sign_verify_detached(
+			(
+				typeof signature == "string" ? fromBase64String(signature) :
+					signature
+			),
+			dataToBuffer(data),
+			publicKey
+		);
+	}
+	catch (err) {
+		throw new Error("Data signature failed.",{ cause: err, });
 	}
 }
 
@@ -703,6 +729,36 @@ function configure({
 	if (cacheLifetime != null) {
 		setLockKeyCacheLifetime(cacheLifetime)
 	}
+}
+
+function dataToBuffer(data) {
+	var dataBuffer = (
+		// null/undefined?
+		data == null ? null :
+
+		// raw array buffer?
+		data instanceof ArrayBuffer ? new Uint8Array(data) :
+
+		// already uint8 byte array?
+		isByteArray(data) ? data :
+
+		// encode text to uint8 buffer
+		fromUTF8String(
+			// JSON-compatible object (hopefully)?
+			typeof data == "object" ? JSON.stringify(data) :
+
+			// already a string?
+			typeof data == "string" ? data :
+
+			// some other value type that needs to be
+			// stringified
+			String(data)
+		)
+	);
+	if (dataBuffer == null) {
+		throw new Error("Non-empty data required.");
+	}
+	return dataBuffer;
 }
 
 function isByteArray(val) {
