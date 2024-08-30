@@ -689,7 +689,7 @@ function setLockKeyCacheLifetime(ms) {
 function configureStorage(storageOpt) {
 	if (
 		// known storage adapter type?
-		[ "idb", "local-storage", "session-storage", "cookie", "opfs", ]
+		[ "idb", "local-storage", "session-storage", "cookie", "opfs", "opfs-worker", ]
 			.includes(storageOpt)
 	) {
 		DEFAULT_STORAGE_TYPE = storageOpt;
@@ -785,10 +785,29 @@ function computePasskeyEntryHash(passkeyEntry) {
 async function checkStorage() {
 	if (store == null) {
 		if (
-			[ "idb", "local-storage", "session-storage", "cookie", "opfs", ]
+			[ "idb", "local-storage", "session-storage", "cookie", "opfs", "opfs-worker", ]
 			.includes(DEFAULT_STORAGE_TYPE)
 		) {
-			store = await import(`@lo-fi/client-storage/${DEFAULT_STORAGE_TYPE}`);
+			// note: bundlers (e.g., Astro, etc) don't support transforming
+			// import-modifiers unless they're fixed strings, so that's why
+			// we're using a ternary here instead of interpolating the value
+			store = (
+				DEFAULT_STORAGE_TYPE == "idb" ?
+					await import("@lo-fi/client-storage/idb") :
+				DEFAULT_STORAGE_TYPE == "local-storage" ?
+					await import("@lo-fi/client-storage/local-storage") :
+				DEFAULT_STORAGE_TYPE == "session-storage" ?
+					await import("@lo-fi/client-storage/session-storage") :
+				DEFAULT_STORAGE_TYPE == "cookie" ?
+					await import("@lo-fi/client-storage/cookie") :
+				DEFAULT_STORAGE_TYPE == "opfs" ?
+					await import("@lo-fi/client-storage/opfs") :
+				DEFAULT_STORAGE_TYPE == "opfs-worker" ?
+					await import("@lo-fi/client-storage/opfs-worker") :
+
+					// note: won't ever get here
+					null
+			);
 		}
 		// note: shouldn't ever get here
 		else {
