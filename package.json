@@ -22,7 +22,7 @@
 	},
 	"dependencies": {
 		"@lo-fi/client-storage": "~0.9.0",
-		"@lo-fi/webauthn-local-client": "~0.1000.1"
+		"@lo-fi/webauthn-local-client": "~0.1000.2"
 	},
 	"devDependencies": {
 		"micromatch": "~4.0.5",

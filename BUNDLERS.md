@@ -10,15 +10,15 @@ The plugins for Astro, Vite, and Webpack are included in the `bundler-plugins/` 
 
 **Note:** You should not need to manually copy any files, as the plugins access the dependencies (in `node_modules`) directly to pull the files needed. But for reference, the files these plugins access are:
 
-* `node_modules/@lo-fi/local-data-lock/dist/bundlers/ldl.mjs`
+* `@lo-fi/local-data-lock/dist/bundlers/ldl.mjs`
 
     ESM library module that's suitable for bundling and `import`ing into your web app.
 
-    **Note:** this is *not* the same as `node_modules/@lo-fi/local-data-lock/dist/auto/ldl.js`, which is only intended [for web application projects WITHOUT a bundler](NON-BUNDLERS.md)
+    **Note:** this is *not* the same as `@lo-fi/local-data-lock/dist/auto/ldl.js`, which is only intended [for web application projects WITHOUT a bundler](NON-BUNDLERS.md)
 
-* `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc.mjs`
+* `@lo-fi/webauthn-local-client/dist/bundlers/walc.mjs`
 
-* `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js`
+* `@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js`
 
     Non-ESM (plain global .js) bundle of dependencies that must be loaded separately from (and prior to) your app's bundle.
 
@@ -59,9 +59,9 @@ export default defineConfig({
 });
 ```
 
-This plugin works for the `astro dev` (dev-server), as well as `astro build` / `astro preview` modes. In all cases, it copies the WebAuthn-Local-Client (`@lo-fi/webauthn-local-client`) dependency bundle file (`/dist/bundlers/walc-external-bundle.js`) into the `public/` directory of your project root, as well as the `dist/` directory when running a build. It also injects an inline `<script>` element into the `<head>` of all generated pages, which dynamically loads the `/walc-external-bundle.js` script file (which has all the dependencies WALC needs).
+This plugin works for the `astro dev` (dev-server), as well as `astro build` / `astro preview` modes. In all cases, it copies the `@lo-fi/local-data-lock/dist/bundlers/walc-external-bundle.js` file into the `public/` directory of your project root, as well as the `dist/` directory when running a build. It also injects an inline `<script>` element into the `<head>` of all generated pages, which dynamically loads the `/walc-external-bundle.js` script file (which has all the dependencies WALC needs).
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Astro project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/astro.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Astro project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `@lo-fi/local-data-lock/bundler-plugins/astro.mjs` plugin and make necessary changes.
 
 ### Vite Plugin
 
@@ -92,9 +92,9 @@ export default defineConfig({
 });
 ```
 
-This plugin works for the `vite dev` (dev-server), `vite preview` (also dev-server), and `vite build` modes. In all cases, it copies the `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the `public/` directory of your project root. It also injects a `<script src="/walc-external-bundle.js"></script>` tag into the markup of the `index.html` file that Vite produces for your app.
+This plugin works for the `vite dev` (dev-server), `vite preview` (also dev-server), and `vite build` modes. In all cases, it copies the `@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the `public/` directory of your project root. It also injects a `<script src="/walc-external-bundle.js"></script>` tag into the markup of the `index.html` file that Vite produces for your app.
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Vite project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `node_modules/@lo-fi/local-data-lock/bundler-plugins/vite.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Vite project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `@lo-fi/local-data-lock/bundler-plugins/vite.mjs` plugin and make necessary changes.
 
 #### Top-level `await`
 
@@ -151,9 +151,9 @@ export default {
 };
 ```
 
-This plugin copies the `node_modules/@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the build root (default `dist/`), along with the other bundled files. It also injects a `<script src="walc-external-bundle.js"></script>` tag into the markup of the `index.html` file (and any other HTML files) that Webpack produces for your app.
+This plugin copies the `@lo-fi/webauthn-local-client/dist/bundlers/walc-external-bundle.js` file into the build root (default `dist/`), along with the other bundled files. It also injects a `<script src="walc-external-bundle.js"></script>` tag into the markup of the `index.html` file (and any other HTML files) that Webpack produces for your app.
 
-**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Webpack project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `local-data-lock/bundler-plugins/webpack.mjs` plugin and make necessary changes.
+**Note:** At present, this plugin is not configurable in any way (i.e., calling `LDL()` above with no arguments). If something about its behavior is not compatible with your Webpack project setup -- which can vary widely and be quite complex to predict or support by a basic plugin -- it's recommended you simply copy over the `@lo-fi/local-data-lock/bundler-plugins/webpack.mjs` plugin and make necessary changes.
 
 ## Import/Usage
 

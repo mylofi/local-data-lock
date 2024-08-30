@@ -2,13 +2,13 @@
 
 To use this library directly -- i.e., in a classic/vanilla web project without a modern bundler tool -- make a directory for it (e.g., `local-data-lock/`) in your browser app's JS assets directory.
 
-Then copy over all `dist/auto/*` contents, as-is:
+Then copy over all `@lo-fi/local-data-lock/dist/auto/*` contents, as-is:
 
-* `dist/auto/ldl.js`
+* `@lo-fi/local-data-lock/dist/auto/ldl.js`
 
-    **Note:** this is *not* the same as `dist/bundlers/ldl.mjs`, which is only intended [for web application projects WITH a bundler](BUNDLERS.md)
+    **Note:** this is *not* the same as `@lo-fi/local-data-lock/dist/bundlers/ldl.mjs`, which is only intended [for web application projects WITH a bundler](BUNDLERS.md)
 
-* `dist/auto/external/*` (preserve the whole `external/` sub-directory):
+* `@lo-fi/local-data-lock/dist/auto/external/*` (preserve the whole `external/` sub-directory):
     - `@lo-fi/webauthn-local-client/walc.js`
     - `@lo-fi/webauthn-local-client/external.js`
     - `@lo-fi/webauthn-local-client/external/asn1.all.min.js`
