@@ -1,4 +1,5 @@
 import {
+	supportsWebAuthn,
 	listLocalIdentities,
 	clearLockKeyCache,
 	removeLocalAccount,
@@ -166,6 +167,8 @@ async function setPasskeyTimeout() {
 }
 
 async function promptAddPasskey() {
+	if (!checkWebAuthnSupport()) return;
+
 	var passkeyUsernameEl;
 	var passkeyDisplayNameEl;
 
@@ -280,6 +283,8 @@ async function registerAccount() {
 }
 
 async function detectAccount() {
+	if (!checkWebAuthnSupport()) return;
+
 	var { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
 	try {
 		startSpinner();
@@ -329,6 +334,8 @@ async function resetAllAccounts() {
 }
 
 async function unlockAccount() {
+	if (!checkWebAuthnSupport()) return;
+
 	if (selectAccountEl.selectedIndex == 0) {
 		return;
 	}
@@ -391,6 +398,8 @@ async function addPasskey() {
 }
 
 async function resetAccount() {
+	if (!checkWebAuthnSupport()) return;
+
 	var confirmResult = await Swal.fire({
 		text: "Resetting an account regenerates a new encryption/decryption key and a new passkey, while discarding previously associated passkeys. Are you sure?",
 		icon: "warning",
@@ -455,6 +464,8 @@ async function lockAccount() {
 }
 
 async function saveData() {
+	if (!checkWebAuthnSupport()) return;
+
 	var { signal, intv } = createTimeoutToken(passkeyTimeout) || {};
 	try {
 		startSpinner();
@@ -482,6 +493,8 @@ async function saveData() {
 }
 
 async function signAndVerify() {
+	if (!checkWebAuthnSupport()) return;
+
 	var result = await Swal.fire({
 		title: "Enter some text to sign",
 		input: "text",
@@ -626,5 +639,12 @@ function createTimeoutToken(seconds) {
 		let ac = new AbortController();
 		let intv = setTimeout(() => ac.abort("Timeout!"),seconds * 1000);
 		return { signal: ac.signal, intv, };
+	}
+}
+
+async function checkWebAuthnSupport() {
+	if (!supportsWebAuthn) {
+		showError("Sorry, but this device doesn't seem to support the proper passkey functionality.");
+		return false;
 	}
 }
