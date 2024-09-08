@@ -245,9 +245,11 @@ async function getLockKey(
 						let passkey = identityRecord.passkeys.find(passkey => (
 							passkey.credentialID == authResult.response.credentialID
 						));
-						let publicKey = (passkey != null) ? passkey.publicKey : null;
+						let publicKey = passkey?.publicKey;
 						let verified = (
-							(publicKey != null) ? await verifyAuthResponse(authResult.response,publicKey) : false
+							publicKey != null ?
+								(await verifyAuthResponse(authResult.response,publicKey)) :
+								false
 						);
 						if (!verified) {
 							throw new Error("Auth verification failed");
@@ -304,9 +306,11 @@ async function getLockKey(
 					let passkey = identityRecord.passkeys.find(passkey => (
 						passkey.credentialID == authResult.response.credentialID
 					));
-					let publicKey = (passkey != null) ? passkey.publicKey : null;
+					let publicKey = passkey?.publicKey;
 					let verified = (
-						(publicKey != null) ? await verifyAuthResponse(authResult.response,publicKey) : false
+						publicKey != null ?
+							(await verifyAuthResponse(authResult.response,publicKey)) :
+							false
 					);
 					if (!verified) {
 						throw new Error("Auth verification failed");
