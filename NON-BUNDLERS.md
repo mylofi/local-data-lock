@@ -8,6 +8,12 @@ Then copy over all `@lo-fi/local-data-lock/dist/auto/*` contents, as-is:
 
     **Note:** this is *not* the same as `@lo-fi/local-data-lock/dist/bundlers/ldl.mjs`, which is only intended [for web application projects WITH a bundler](BUNDLERS.md)
 
+* `@byojs/storage/dist/util.mjs`
+* `@byojs/storage/dist/worker.opfs.mjs`
+* `@byojs/storage/dist/adapter.*.mjs`
+
+    Client-side storage adapters
+
 * `@lo-fi/local-data-lock/dist/auto/external/*` (preserve the whole `external/` sub-directory):
     - `@lo-fi/webauthn-local-client/walc.js`
     - `@lo-fi/webauthn-local-client/external.js`
