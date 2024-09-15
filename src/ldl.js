@@ -797,17 +797,17 @@ async function checkStorage() {
 			// we're using a ternary here instead of interpolating the value
 			store = (
 				DEFAULT_STORAGE_TYPE == "idb" ?
-					await import("@lo-fi/client-storage/idb") :
+					await import("@byojs/storage/idb") :
 				DEFAULT_STORAGE_TYPE == "local-storage" ?
-					await import("@lo-fi/client-storage/local-storage") :
+					await import("@byojs/storage/local-storage") :
 				DEFAULT_STORAGE_TYPE == "session-storage" ?
-					await import("@lo-fi/client-storage/session-storage") :
+					await import("@byojs/storage/session-storage") :
 				DEFAULT_STORAGE_TYPE == "cookie" ?
-					await import("@lo-fi/client-storage/cookie") :
+					await import("@byojs/storage/cookie") :
 				DEFAULT_STORAGE_TYPE == "opfs" ?
-					await import("@lo-fi/client-storage/opfs") :
+					await import("@byojs/storage/opfs") :
 				DEFAULT_STORAGE_TYPE == "opfs-worker" ?
-					await import("@lo-fi/client-storage/opfs-worker") :
+					await import("@byojs/storage/opfs-worker") :
 
 					// note: won't ever get here
 					null

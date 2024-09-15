@@ -407,7 +407,7 @@ key === existingLockKey;        // true
 
 ## Configuring client-side storage
 
-By default, **Local Data Lock** will store its [passkey account metadata](#how-does-it-work) in [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API), with the **Client Storage** library's `idb` storage adapter.
+By default, **Local Data Lock** will store its [passkey account metadata](#how-does-it-work) in [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API), with the **Storage** library's `idb` storage adapter.
 
 However, you may wish to configure to use one of the other client storage mechanisms:
 
@@ -421,11 +421,11 @@ configure({ accountStorage: "local-storage" });
 
 **WARNING:** If you need to configure `accountStorage` as shown, make sure to do so just once (per page load), *before* any other calls to any other **Local Data Lock** methods, to prevent any confusion of where the passkey account metadata is held.
 
-The corresponding (or default) **Client Storage** adapter will be loaded dynamically (i.e., from `"@lo-fi/client-storage/*"`), at the first need for **Local Data Lock** to access or update its passkey account metadata storage.
+The corresponding (or default) **Storage** adapter will be loaded dynamically (i.e., from `"@byojs/storage/*"`), at the first need for **Local Data Lock** to access or update its passkey account metadata storage.
 
 ### Manually specifying custom storage adapter
 
-If you want to use a custom storage adapter -- one *not* [provided by **Client Storage**](https://github.com/mylofi/client-storage?tab=readme-ov-file#client-side-storage-adapters) -- pass the storage adapter instance directly to `configure()`:
+If you want to use a custom storage adapter -- one *not* [provided by **Storage**](https://github.com/byojs/storage?tab=readme-ov-file#client-side-storage-adapters) -- pass the storage adapter instance directly to `configure()`:
 
 ```js
 import { configure } from "..";
@@ -433,7 +433,7 @@ import { configure } from "..";
 configure({ accountStorage: customStorageAdapter });
 ```
 
-**NOTE:** The adapter instance (`customStorageAdapter`) *must* conform to the [storage-adapter API as defined by **Client Storage**](https://github.com/mylofi/client-storage?tab=readme-ov-file#client-storage-api).
+**NOTE:** The adapter instance (`customStorageAdapter`) *must* conform to the [storage-adapter API as defined by **Storage**](https://github.com/byojs/storage?tab=readme-ov-file#storage-api).
 
 ## WebAuthn-Local-Client Utilities
 

@@ -15,7 +15,7 @@ import {
 //    in index.html; swap "src" for "dist" here to test
 //    against the dist/* files
 from "local-data-lock/src";
-import SSStore from "@lo-fi/client-storage/session-storage";
+import SSStore from "@byojs/storage/session-storage";
 
 // simple helper util for showing a spinner
 // (during slower passkey operations)
