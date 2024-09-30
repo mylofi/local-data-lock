@@ -19,13 +19,14 @@ import {
 
 const CURRENT_LOCK_KEY_FORMAT_VERSION = 1;
 const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES;
-var LOCK_KEY_CACHE_LIFETIME = setLockKeyCacheLifetime(30 * 60 * 1000); // 30 min (default)
-var DEFAULT_STORAGE_TYPE = "idb";
 var store = null;
 var localIdentities = null;
 var lockKeyCache = {};
 var abortToken = null;
 var externalSignalCache = new WeakMap();
+var cachePurgeIntv = null;
+var LOCK_KEY_CACHE_LIFETIME = setLockKeyCacheLifetime(30 * 60 * 1000); // 30 min (default)
+var DEFAULT_STORAGE_TYPE = "idb";
 
 
 // ***********************
@@ -90,6 +91,7 @@ async function listLocalIdentities() {
 
 function getCachedLockKey(localID) {
 	var now = Date.now();
+
 	if (
 		// lock-key currently in cache?
 		(localID in lockKeyCache) &&
@@ -99,7 +101,7 @@ function getCachedLockKey(localID) {
 			now - Math.min(LOCK_KEY_CACHE_LIFETIME,now)
 		)
 	) {
-		// discard cache-internal timestamp field
+		// hide cache-internal timestamp field
 		let { timestamp, ...lockKey } = lockKeyCache[localID];
 		return lockKey;
 	}
@@ -114,16 +116,64 @@ function cacheLockKey(localID,lockKey,forceUpdate = false) {
 			// expiration check
 			timestamp: Date.now(),
 		};
+		resetCachePurgeTimer();
 	}
 }
 
 function clearLockKeyCache(localID) {
 	if (localID != null) {
-		delete lockKeyCache[localID]
+		delete lockKeyCache[localID];
 	}
 	else {
 		lockKeyCache = {};
 	}
+	resetCachePurgeTimer();
+}
+
+function resetCachePurgeTimer() {
+	if (cachePurgeIntv != null) {
+		clearTimeout(cachePurgeIntv);
+		cachePurgeIntv = null;
+	}
+	setCachePurgeTimer();
+}
+
+function setCachePurgeTimer() {
+	if (cachePurgeIntv == null) {
+		let nextTimestamp = nextCacheTimestamp();
+		if (nextTimestamp != null) {
+			let when = Math.max(
+				// at least 1 minute
+				60_000,
+				(
+					// time left until expiration (if any)
+					Math.max(nextTimestamp + LOCK_KEY_CACHE_LIFETIME - Date.now(),0) +
+
+					// up to 10 more seconds
+					Math.round(Math.random() * 1E4)
+				)
+			);
+			cachePurgeIntv = setTimeout(purgeExpiredCacheEntries,when);
+		}
+	}
+}
+
+function nextCacheTimestamp() {
+	return ((
+		Object.values(lockKeyCache).map(entry => entry.timestamp)
+	) || [])[0];
+}
+
+function purgeExpiredCacheEntries() {
+	cachePurgeIntv = null;
+	var now = Date.now();
+	var when = now - Math.min(LOCK_KEY_CACHE_LIFETIME,now);
+
+	Object.entries(lockKeyCache)
+		.filter(([ localID, entry, ]) => entry.timestamp < when)
+		.forEach(([ localID, ]) => { delete lockKeyCache[localID]; });
+
+	resetCachePurgeTimer();
 }
 
 async function removeLocalAccount(localID) {
@@ -687,7 +737,12 @@ async function storeLocalIdentities() {
 }
 
 function setLockKeyCacheLifetime(ms) {
-	return (LOCK_KEY_CACHE_LIFETIME = Math.max(0,Number(ms) || 0));
+	try {
+		return (LOCK_KEY_CACHE_LIFETIME = Math.max(0,Number(ms) || 0));
+	}
+	finally {
+		resetCachePurgeTimer();
+	}
 }
 
 function configureStorage(storageOpt) {
