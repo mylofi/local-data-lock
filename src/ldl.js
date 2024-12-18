@@ -19,6 +19,13 @@ import {
 
 const CURRENT_LOCK_KEY_FORMAT_VERSION = 1;
 const IV_BYTE_LENGTH = sodium.crypto_sign_SEEDBYTES;
+const supportsWAUserVerification = (
+	typeof PublicKeyCredential != "undefined" &&
+	typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable != "undefined" &&
+
+	// NOTE: top-level await (requires ES2022+)
+	(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())
+);
 var store = null;
 var localIdentities = null;
 var lockKeyCache = {};
@@ -43,6 +50,7 @@ export {
 	resetAbortReason,
 
 	// main library API:
+	supportsWAUserVerification,
 	listLocalIdentities,
 	clearLockKeyCache,
 	removeLocalAccount,
