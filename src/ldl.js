@@ -75,6 +75,7 @@ var publicAPI = {
 	resetAbortReason,
 
 	// main library API:
+	supportsWAUserVerification,
 	listLocalIdentities,
 	clearLockKeyCache,
 	removeLocalAccount,
