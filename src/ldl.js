@@ -476,7 +476,7 @@ async function getLockKey(
 				authResult.response.userID.byteLength == (IV_BYTE_LENGTH + 2)
 			) {
 				let lockKey = deriveLockKey(
-					authResult.response.userID.subarray(0,IV_BYTE_LENGTH)
+					authResult.response.userID.slice(0,IV_BYTE_LENGTH)
 				);
 				cacheLockKey(localID,lockKey);
 				return lockKey;
