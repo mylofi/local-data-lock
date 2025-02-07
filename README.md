@@ -90,7 +90,7 @@ To register a new local account:
 ```js
 import { getLockKey } from "..";
 
-var key = await getLockKey({ addNewPasskey: true, });
+var key = await getLockKey({ addNewPasskey: true });
 ```
 
 The returned keypair result will also include a `localIdentity` property, with a unique ID (`string` value) for the local account. This local account ID should be stored by your application (in local-storage, cookie, etc):
@@ -147,7 +147,7 @@ var key = Object.fromEntries(
 If the `currentAccountID` (as shown above) is available, it should be used in subsequent calls to `getLockKey()` when re-obtaining the encryption/decryption keypair from the existing passkey:
 
 ```js
-var key = await getLockKey({ localIdentitity: currentAccountID, });
+var key = await getLockKey({ localIdentitity: currentAccountID });
 ```
 
 If you don't have (or the application loses) an account ID, call `listLocalIdentities()` (async) to receive an array of all registed local account IDs.
@@ -161,7 +161,10 @@ Users may prefer a more robust security setup (less chance of identity/data loss
 To prompt for adding a new passkey to an existing local account:
 
 ```js
-/*var key =*/ await getLockKey({ localIdentitity: currentAccountID, addNewPasskey: true, });
+/*var key =*/ await getLockKey({
+    localIdentitity: currentAccountID,
+    addNewPasskey: true
+});
 ```
 
 ### Change lock-key cache lifetime
@@ -213,7 +216,7 @@ var key = await getLockKey({
     username: "a-local-username",
     displayName: "A Local Username",
     relyingPartyID: "myappdomain.tld",
-    relyingPartyName: "My App",
+    relyingPartyName: "My App"
 });
 ```
 
@@ -389,7 +392,7 @@ When registering a new local-account:
 ```js
 var key = await getLockKey({
     addNewPasskey: true,
-    useLockKey: existingLockKey,
+    useLockKey: existingLockKey
 });
 key === existingLockKey;        // true
 ```
@@ -400,7 +403,7 @@ When resetting the key on an existing local-account:
 var key = await getLockKey({
     localIdentitity: currentAccountID,
     resetLockKey: true,
-    useLockKey: existingLockKey,
+    useLockKey: existingLockKey
 });
 key === existingLockKey;        // true
 ```
