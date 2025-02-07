@@ -52,6 +52,7 @@ export {
 	// main library API:
 	supportsWAUserVerification,
 	listLocalIdentities,
+	cacheLockKey,
 	clearLockKeyCache,
 	removeLocalAccount,
 	getLockKey,
@@ -77,6 +78,7 @@ var publicAPI = {
 	// main library API:
 	supportsWAUserVerification,
 	listLocalIdentities,
+	cacheLockKey,
 	clearLockKeyCache,
 	removeLocalAccount,
 	getLockKey,
@@ -116,7 +118,11 @@ function getCachedLockKey(localID) {
 	}
 }
 
-function cacheLockKey(localID,lockKey,forceUpdate = false) {
+function cacheLockKey(lockKey) {
+	internalCacheLockKey(lockKey.localIdentity,checkLockKey(lockKey));
+}
+
+function internalCacheLockKey(localID,lockKey,forceUpdate = false) {
 	if (!(localID in lockKeyCache) || forceUpdate) {
 		lockKeyCache[localID] = {
 			...lockKey,
@@ -269,7 +275,7 @@ async function getLockKey(
 				// registration succeeded, lock-key returned?
 				else if (lockKey != null) {
 					await storeLocalIdentities();
-					cacheLockKey(localID,lockKey);
+					internalCacheLockKey(localID,lockKey);
 
 					return Object.freeze({
 						...lockKey,
@@ -376,7 +382,7 @@ async function getLockKey(
 					}
 				}
 
-				cacheLockKey(localID,lockKey);
+				internalCacheLockKey(localID,lockKey);
 			}
 			else if (verify) {
 				throw new Error("Auth verification requested but skipped, against unrecognized passkey (no matching local-identity)");
@@ -404,7 +410,7 @@ async function getLockKey(
 		// registration succeeded, lock-key returned?
 		if (record != null && lockKey != null) {
 			localIdentities[localID] = record;
-			cacheLockKey(localID,lockKey);
+			internalCacheLockKey(localID,lockKey);
 			await storeLocalIdentities();
 
 			return Object.freeze({
@@ -478,7 +484,7 @@ async function getLockKey(
 				let lockKey = deriveLockKey(
 					authResult.response.userID.slice(0,IV_BYTE_LENGTH)
 				);
-				cacheLockKey(localID,lockKey);
+				internalCacheLockKey(localID,lockKey);
 				return lockKey;
 			}
 			else {
@@ -571,7 +577,10 @@ function checkLockKey(lockKeyCandidate) {
 			isByteArray(lockKeyCandidate.iv) &&
 			lockKeyCandidate.iv.byteLength == IV_BYTE_LENGTH
 		) {
-			return deriveLockKey(lockKeyCandidate.iv);
+			return {
+				localIdentity: lockKeyCandidate.localIdentity,
+				...deriveLockKey(lockKeyCandidate.iv),
+			};
 		}
 	}
 	throw new Error("Unrecongnized lock-key");

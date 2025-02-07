@@ -178,7 +178,19 @@ import { configure } from "..";
 configure({ cacheLifetime: 5 * 60 * 1000 });
 ```
 
-### Clear the passkey/keypair cache
+### Manually cache a lock-key
+
+To manually cache a lock-key silently (without passkey prompt):
+
+```js
+import { cacheLockKey } from "..";
+
+cacheLockKey(existingLockKey);
+```
+
+**WARNING:** This is generally not recommended; it's provided only for advanced use-cases, such as a lock-key being preserved (temporarily) to approximate a "login session" across multiple page loads. Avoid this approach unless you're certain you need it, as it can degrade some of the security assurances behind the design of this library.
+
+### Clear the lock-key cache
 
 To clear a cache entry (effectively, "logging out"):
 
