@@ -35,6 +35,12 @@ var cachePurgeIntv = null;
 var LOCK_KEY_CACHE_LIFETIME = setLockKeyCacheLifetime(30 * 60 * 1000); // 30 min (default)
 var DEFAULT_STORAGE_TYPE = "idb";
 
+// attempt to ensure that webauthn passkey assertions
+// are never silent and always user-verified (UV)
+if (supportsWAUserVerification) {
+	navigator.credentials.preventSilentAccess();
+}
+
 
 // ***********************
 
@@ -209,9 +215,33 @@ async function getLockKey(
 		resetLockKey = false,
 		useLockKey = null,
 		verify = true,
+		regOverride: {
+			authenticatorSelection: {
+				authenticatorAttachment: regAuthenticatorAttachment = "platform",
+				userVerification: regUserVerification = "required",
+				residentKey: regResidentKey = "required",
+				requireResidentKey: regRequireResidentKey = true,
+				...regOtherAuthenticatorSelectionParams
+			} = {},
+			extensions: {
+				crepProps: regCredProps = true,
+				credentialProtectionPolicy: regCredentialProtectionPolicy = "userVerificationRequired",
+				...regOtherExtensionsParams
+			} = {},
+			...regOtherParams
+		} = {},
+		authOverride: {
+			mediation: authMediation = "required",
+			userVerification: authUserVerification = "required",
+			...authOtherParams
+		} = {},
 		signal: cancelLockKey,
 	} = {},
 ) {
+	if (!supportsWAUserVerification) {
+		throw new Error("Required user verification not supported with any authenticator on this device.");
+	}
+
 	// local-identity already registered?
 	await checkStorage();
 	var identityRecord = localID != null ? localIdentities[localID] : null;
@@ -289,16 +319,22 @@ async function getLockKey(
 
 				let authOptions = authDefaults({
 					relyingPartyID,
-					mediation: "optional",
 					allowCredentials: (
 						identityRecord.passkeys.map(({ credentialID, }) => ({
 							type: "public-key",
 							id: credentialID,
 						}))
 					),
+					mediation: authMediation,
+					userVerification: authUserVerification,
 					signal: abortToken.signal,
+					...authOtherParams,
 				});
 				let authResult = await auth(authOptions);
+
+				if (!verifyCredentialSecurity(authResult.response)) {
+					throw new Error("Authentication response insufficient",{ cause: authResult, });
+				}
 
 				cleanupExternalSignalHandler(abortToken);
 				abortToken = null;
@@ -338,10 +374,16 @@ async function getLockKey(
 		resetAbortToken(cancelLockKey);
 		let authOptions = authDefaults({
 			relyingPartyID,
-			mediation: "optional",
+			mediation: authMediation,
+			userVerification: authUserVerification,
 			signal: abortToken.signal,
+			...authOtherParams,
 		});
 		let authResult = await auth(authOptions);
+
+		if (!verifyCredentialSecurity(authResult.response)) {
+			throw new Error("Authentication response insufficient",{ cause: authResult, });
+		}
 
 		cleanupExternalSignalHandler(abortToken);
 		abortToken = null;
@@ -441,6 +483,13 @@ async function getLockKey(
 			userHandle.set(new Uint8Array(seqBytes.buffer),lockKey.iv.byteLength);
 
 			let regOptions = regDefaults({
+				authenticatorSelection: {
+					authenticatorAttachment: regAuthenticatorAttachment,
+					userVerification: regUserVerification,
+					residentKey: regResidentKey,
+					requireResidentKey: regRequireResidentKey,
+					...regOtherAuthenticatorSelectionParams,
+				},
 				relyingPartyID,
 				relyingPartyName,
 				user: {
@@ -448,11 +497,39 @@ async function getLockKey(
 					name: username,
 					displayName,
 				},
+				extensions: {
+					credProps: regCredProps,
+					credentialProtectionPolicy: regCredentialProtectionPolicy,
+					...regOtherExtensionsParams,
+				},
 				signal: abortToken.signal,
+				...regOtherParams,
 			});
 			let regResult = await register(regOptions);
 
-			if (regResult != null) {
+			if (
+				regResult != null &&
+
+				(
+					// intentionally modified the default registration
+					// credential security settings?
+					!(
+						regAuthenticatorAttachment == "platform" &&
+						regUserVerification == "required" &&
+						regResidentKey == "required" &&
+						regRequireResidentKey === true &&
+						regCredProps === true &&
+						regCredentialProtectionPolicy == "userVerificationRequired"
+					) ||
+
+					// otherwise, assume default registration credential
+					// security settings
+					//
+					// verify the authenticator respected our request
+					// to ensure user-presence and user-verification
+					verifyCredentialSecurity(regResult.response)
+				)
+			) {
 				return {
 					record: {
 						lastSeq,
@@ -467,10 +544,42 @@ async function getLockKey(
 					lockKey,
 				};
 			}
+
+			throw new Error("Registration response insufficient",{ cause: regResult, });
 		}
 		catch (err) {
 			throw new Error("Identity/Passkey registration failed",{ cause: err, });
 		}
+	}
+
+	function verifyCredentialSecurity(response) {
+		var extensionData = (
+			(
+				response.extensionData != null ||
+				response.clientExtensionData != null
+			) ?
+				Object.assign(
+					{},
+					response.extensionData,
+					response.clientExtensionData
+				) :
+
+				null
+		);
+		return (
+			response.flags != null &&
+			response.flags.userPresence === true &&
+			response.flags.userVerification === true &&
+			(
+				extensionData == null ||
+
+				// note: extension only passed for registration
+				(
+					extensionData.credProps != null &&
+					extensionData.credProps.rk === true
+				)
+			)
+		);
 	}
 
 	function extractLockKey(authResult) {
@@ -499,7 +608,7 @@ async function getLockKey(
 
 function resetAbortToken(externalSignal) {
 	// previous attempt still pending?
-	if (abortToken) {
+	if (abortToken != null) {
 		cleanupExternalSignalHandler(abortToken);
 
 		if (!abortToken.aborted) {
